@@ -204,28 +204,71 @@ bool OFS_Project::AddFunscript(const std::string& path) noexcept
     auto jsonText = Util::ReadFileString(path.c_str());
     auto json = Util::ParseJson(jsonText, &succ);
 
-    auto script = std::make_shared<Funscript>();
-    auto metadata = Funscript::Metadata();
+	bool isFirstFunscript = Funscripts.size() == 0;
 
-    bool isFirstFunscript = Funscripts.size() == 0;
-    if (succ && script->Deserialize(json, &metadata, isFirstFunscript)) {
-        // Add existing script to project
-        script = Funscripts.emplace_back(std::move(script));
-        script->UpdateRelativePath(MakePathRelative(path));
-        if (isFirstFunscript) {
-            // Initialize project metadata using the first funscript
-            auto& projectState = State();
-            projectState.metadata = metadata;
-        }
-        loadedScript = true;
-    }
-    else {
-        // Add empty script to project
-        script = std::make_shared<Funscript>();
-        script->UpdateRelativePath(MakePathRelative(path));
-        script = Funscripts.emplace_back(std::move(script));
-    }
-    return loadedScript;
+	if (succ && json.is_object()) {
+		// Support Funscript 2.0: load channels if present
+		bool hasChannels = json.contains("channels") && json["channels"].is_object();
+		if (hasChannels) {
+			// Load root/top-level actions if available (treat as main channel)
+			{
+				auto script = std::make_shared<Funscript>();
+				auto metadata = Funscript::Metadata();
+				if (script->Deserialize(json, &metadata, isFirstFunscript)) {
+					script = Funscripts.emplace_back(std::move(script));
+					script->UpdateRelativePath(MakePathRelative(path));
+					if (isFirstFunscript) {
+						auto& projectState = State();
+						projectState.metadata = metadata;
+						isFirstFunscript = false;
+					}
+					loadedScript = true;
+				}
+			}
+			// Load each named channel as additional scripts
+			for (auto it = json["channels"].begin(); it != json["channels"].end(); ++it) {
+				const std::string channelName = it.key();
+				const nlohmann::json& channelObj = it.value();
+				if (!channelObj.is_object()) continue;
+				if (!channelObj.contains("actions") || !channelObj["actions"].is_array()) continue;
+				auto scriptCh = std::make_shared<Funscript>();
+				// Channels don't carry project metadata; only actions
+				if (scriptCh->Deserialize(channelObj, nullptr, false)) {
+					scriptCh = Funscripts.emplace_back(std::move(scriptCh));
+					// Synthesize a per-channel relative path for UI/export compatibility
+					auto base = Util::PathFromString(path);
+					auto baseNoExt = base;
+					baseNoExt.replace_extension("");
+					auto channelPath = (baseNoExt.u8string() + "." + channelName + ".funscript");
+					scriptCh->UpdateRelativePath(MakePathRelative(channelPath));
+					loadedScript = true;
+				}
+			}
+			return loadedScript;
+		}
+	}
+
+	// Default 1.0 single-file path
+	auto script = std::make_shared<Funscript>();
+	auto metadata = Funscript::Metadata();
+	if (succ && script->Deserialize(json, &metadata, isFirstFunscript)) {
+		// Add existing script to project
+		script = Funscripts.emplace_back(std::move(script));
+		script->UpdateRelativePath(MakePathRelative(path));
+		if (isFirstFunscript) {
+			// Initialize project metadata using the first funscript
+			auto& projectState = State();
+			projectState.metadata = metadata;
+		}
+		loadedScript = true;
+	}
+	else {
+		// Add empty script to project
+		script = std::make_shared<Funscript>();
+		script->UpdateRelativePath(MakePathRelative(path));
+		script = Funscripts.emplace_back(std::move(script));
+	}
+	return loadedScript;
 }
 
 void OFS_Project::RemoveFunscript(int32_t idx) noexcept

@@ -406,6 +406,64 @@ void OFS_Project::ExportFunscript(const std::string& outputPath, int32_t idx) no
     Util::WriteFile(outputPath.c_str(), jsonText.data(), jsonText.size());
 }
 
+void OFS_Project::ExportFunscript2Quick() noexcept
+{
+	// Export a single combined 2.0 funscript next to each script's default path.
+	// If multiple scripts are loaded, export one 2.0 file based on the first script path
+	// and include other scripts as channels.
+	auto& state = State();
+	if (Funscripts.empty()) return;
+
+	// Determine primary output path (use first script's relative path)
+	auto baseRel = Util::PathFromString(Funscripts[0]->RelativePath());
+	if (baseRel.empty()) return;
+	// Ensure extension is .funscript
+	baseRel.replace_extension(".funscript");
+	auto outPath = MakePathAbsolute(baseRel.u8string());
+
+	// Assemble 2.0 JSON
+	nlohmann::json root;
+	root["version"] = "2.0";
+	root["inverted"] = false;
+	root["range"] = 100;
+	{
+		// Metadata from project
+		nlohmann::json metaObj;
+		OFS::Serializer<false>::Serialize(state.metadata, metaObj);
+		root["metadata"] = std::move(metaObj);
+	}
+	// Top-level actions from the first script
+	{
+		nlohmann::json mainObj;
+		Funscript::Serialize(mainObj, Funscripts[0]->Data(), state.metadata, true);
+		// keep only actions in main object
+		root["actions"] = std::move(mainObj["actions"]);
+	}
+	// Channels for subsequent scripts using filename suffix as channel name if present
+	{
+		nlohmann::json channels = nlohmann::json::object();
+		for (size_t i = 1; i < Funscripts.size(); ++i) {
+			auto& fs = Funscripts[i];
+			nlohmann::json chObj;
+			// Only include actions
+			Funscript::Serialize(chObj, fs->Data(), state.metadata, false);
+			nlohmann::json actions = std::move(chObj["actions"]);
+			// Channel name derived from relative filename like name.roll.funscript -> "roll"
+			auto rel = Util::PathFromString(fs->RelativePath());
+			auto stem = rel.stem().u8string();
+			// If the base contains dots, use the last segment as channel (e.g., name.roll)
+			auto dot = stem.rfind('.');
+			std::string channelName = dot != std::string::npos ? stem.substr(dot + 1) : fs->Title();
+			channels[channelName] = nlohmann::json{ {"actions", std::move(actions)} };
+		}
+		if (!channels.empty()) root["channels"] = std::move(channels);
+	}
+
+	// Write file (ensure extension remains .funscript)
+	auto jsonText = Util::SerializeJson(root, false);
+	Util::WriteFile(outPath.c_str(), jsonText.data(), jsonText.size());
+}
+
 void OFS_Project::loadMultiAxis(const std::string& rootScript) noexcept
 {
     std::vector<std::filesystem::path> relatedFiles;

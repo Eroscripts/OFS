@@ -458,6 +458,14 @@ void OpenFunscripter::registerBindings()
             });
 
         keys->RegisterAction(
+            { "quick_export_2_0",
+                [this]() { quickExport2(); } },
+            Tr::ACTION_QUICK_EXPORT_2_0, "Core",
+            {
+                { ImGuiMod_Ctrl | ImGuiMod_Alt, ImGuiKey_S },
+            });
+
+        keys->RegisterAction(
             { "sync_timestamps",
                 [this]() { player->SyncWithPlayerTime(); } },
             Tr::ACTION_SYNC_TIME_WITH_PLAYER, "Core",
@@ -1876,6 +1884,12 @@ void OpenFunscripter::quickExport() noexcept
     LoadedProject->ExportFunscripts();
 }
 
+void OpenFunscripter::quickExport2() noexcept
+{
+	OFS_PROFILE(__FUNCTION__);
+	LoadedProject->ExportFunscript2Quick();
+}
+
 bool OpenFunscripter::closeProject(bool closeWithUnsavedChanges) noexcept
 {
     OFS_PROFILE(__FUNCTION__);
@@ -2188,6 +2202,10 @@ void OpenFunscripter::ShowMainMenuBar() noexcept
                     quickExport();
                 }
                 OFS::Tooltip(TR(QUICK_EXPORT_TOOLTIP));
+                if (ImGui::MenuItem(FMT(ICON_SHARE " %s", TR(QUICK_EXPORT_2_0)), BINDING_STRING("quick_export_2_0"))) {
+                    quickExport2();
+                }
+                OFS::Tooltip(TR(QUICK_EXPORT_2_0_TOOLTIP));
                 if (ImGui::MenuItem(FMT(ICON_SHARE " %s", TR(EXPORT_ACTIVE_SCRIPT)))) {
                     saveActiveScriptAs();
                 }

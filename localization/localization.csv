@@ -214,6 +214,7 @@ ACTION_ACTION_90,Action at 90,Action at 90
 ACTION_ACTION_100,Action at 100,Action at 100
 ACTION_SAVE_PROJECT,Save project,Save project
 ACTION_QUICK_EXPORT,Quick export,Quick export
+ACTION_QUICK_EXPORT_2_0,Quick export (2.0),Quick export (2.0)
 ACTION_SYNC_TIME_WITH_PLAYER,Sync time with player,Sync time with player
 ACTION_CYCLE_FORWARD_LOADED_SCRIPTS,Cycle forward loaded scripts,Cycle forward loaded scripts
 ACTION_CYCLE_BACKWARD_LOADED_SCRIPTS,Cycle backward loaded scripts,Cycle backward loaded scripts
@@ -303,6 +304,8 @@ SAVE_PROJECT,Save project,Save project
 EXPORT_MENU,Export...,Export...
 QUICK_EXPORT,Quick export,Quick export
 QUICK_EXPORT_TOOLTIP,Exports all scripts as .funscript in their default paths.,Exports all scripts as .funscript in their default paths.
+QUICK_EXPORT_2_0,Quick export (2.0),Quick export (2.0)
+QUICK_EXPORT_2_0_TOOLTIP,Exports combined 2.0 funscript with channels.,Exports combined 2.0 funscript with channels.
 EXPORT_ACTIVE_SCRIPT,Export active script,Export active script
 EXPORT_ALL,Export all,Export all
 AUTO_BACKUP_TIMER_FMT,Auto Backup in %d seconds,Auto Backup in %d seconds

@@ -207,9 +207,10 @@ bool OFS_Project::AddFunscript(const std::string& path) noexcept
 	bool isFirstFunscript = Funscripts.size() == 0;
 
 	if (succ && json.is_object()) {
-		// Support Funscript 2.0: load channels if present
+		// Support Funscript 2.0 (channels) and 1.1 (axes)
 		bool hasChannels = json.contains("channels") && json["channels"].is_object();
-		if (hasChannels) {
+		bool hasAxes = json.contains("axes") && json["axes"].is_array();
+		if (hasChannels || hasAxes) {
 			// Load root/top-level actions if available (treat as main channel)
 			{
 				auto script = std::make_shared<Funscript>();
@@ -225,23 +226,54 @@ bool OFS_Project::AddFunscript(const std::string& path) noexcept
 					loadedScript = true;
 				}
 			}
-			// Load each named channel as additional scripts
-			for (auto it = json["channels"].begin(); it != json["channels"].end(); ++it) {
-				const std::string channelName = it.key();
-				const nlohmann::json& channelObj = it.value();
-				if (!channelObj.is_object()) continue;
-				if (!channelObj.contains("actions") || !channelObj["actions"].is_array()) continue;
-				auto scriptCh = std::make_shared<Funscript>();
-				// Channels don't carry project metadata; only actions
-				if (scriptCh->Deserialize(channelObj, nullptr, false)) {
-					scriptCh = Funscripts.emplace_back(std::move(scriptCh));
-					// Synthesize a per-channel relative path for UI/export compatibility
-					auto base = Util::PathFromString(path);
-					auto baseNoExt = base;
-					baseNoExt.replace_extension("");
-					auto channelPath = (baseNoExt.u8string() + "." + channelName + ".funscript");
-					scriptCh->UpdateRelativePath(MakePathRelative(channelPath));
-					loadedScript = true;
+			// Load each named channel (2.0)
+			if (hasChannels) {
+				for (auto it = json["channels"].begin(); it != json["channels"].end(); ++it) {
+					const std::string channelName = it.key();
+					const nlohmann::json& channelObj = it.value();
+					if (!channelObj.is_object()) continue;
+					if (!channelObj.contains("actions") || !channelObj["actions"].is_array()) continue;
+					auto scriptCh = std::make_shared<Funscript>();
+					if (scriptCh->Deserialize(channelObj, nullptr, false)) {
+						scriptCh = Funscripts.emplace_back(std::move(scriptCh));
+						// Synthesize a per-channel relative path for UI/export compatibility
+						auto base = Util::PathFromString(path);
+						auto baseNoExt = base;
+						baseNoExt.replace_extension("");
+						auto channelPath = (baseNoExt.u8string() + "." + channelName + ".funscript");
+						scriptCh->UpdateRelativePath(MakePathRelative(channelPath));
+						loadedScript = true;
+					}
+				}
+			}
+			// Load 1.1 axes
+			if (hasAxes) {
+				auto mapAxisIdToName = [](const std::string& id) -> std::string {
+					if (id == "L0") return "stroke";
+					if (id == "L1") return "surge";
+					if (id == "L2") return "sway";
+					if (id == "R0") return "twist";
+					if (id == "R1") return "roll";
+					if (id == "R2") return "pitch";
+					if (id == "A1") return "suck";
+					return id; // fallback
+				};
+				for (auto& axisObj : json["axes"]) {
+					if (!axisObj.is_object()) continue;
+					if (!axisObj.contains("actions") || !axisObj["actions"].is_array()) continue;
+					std::string axisId = axisObj.contains("id") && axisObj["id"].is_string() ? axisObj["id"].get<std::string>() : std::string{};
+					std::string channelName = !axisId.empty() ? mapAxisIdToName(axisId) : std::string{"axis"};
+					auto scriptAxis = std::make_shared<Funscript>();
+					if (scriptAxis->Deserialize(axisObj, nullptr, false)) {
+						scriptAxis = Funscripts.emplace_back(std::move(scriptAxis));
+						// Synthesize a per-axis relative path
+						auto base = Util::PathFromString(path);
+						auto baseNoExt = base;
+						baseNoExt.replace_extension("");
+						auto axisPath = (baseNoExt.u8string() + "." + channelName + ".funscript");
+						scriptAxis->UpdateRelativePath(MakePathRelative(axisPath));
+						loadedScript = true;
+					}
 				}
 			}
 			return loadedScript;

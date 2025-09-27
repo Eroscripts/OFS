@@ -253,8 +253,10 @@ void ScriptTimeline::ShowScriptPositions(
 		if (script->Enabled) { drawingCtx.drawnScriptCount += 1; }
 	}
 
+	const auto totalAvailSize = ImGui::GetContentRegionAvail();
 	const float verticalSpacingBetweenScripts = style.ItemSpacing.y*2.f;
-	const auto availSize = ImGui::GetContentRegionAvail() - ImVec2(0.f , verticalSpacingBetweenScripts*((float)drawingCtx.drawnScriptCount-1));
+	auto availSize = totalAvailSize - ImVec2(0.f , verticalSpacingBetweenScripts*((float)drawingCtx.drawnScriptCount-1));
+	if (availSize.y < 0.f) { availSize.y = 0.f; }
 	const auto startCursor = ImGui::GetCursorScreenPos();
 	auto currentCursor = startCursor;
 
@@ -422,7 +424,7 @@ void ScriptTimeline::ShowScriptPositions(
 		}
 
 		ImVec2 newCursor(drawingCtx.canvasPos.x, drawingCtx.canvasPos.y + drawingCtx.canvasSize.y + verticalSpacingBetweenScripts);
-		if (newCursor.y < (startCursor.y + availSize.y)) { currentCursor = newCursor; }
+		if (newCursor.y < (startCursor.y + totalAvailSize.y)) { currentCursor = newCursor; }
 
 		// right click context menu
 		if (ImGui::BeginPopupContextItem(script->Title().c_str()))

@@ -462,6 +462,10 @@ void OFS_Project::ExportFunscript2Quick() noexcept
 		// Metadata from project
 		nlohmann::json metaObj;
 		OFS::Serializer<false>::Serialize(state.metadata, metaObj);
+		if (metaObj.contains("duration") && metaObj["duration"].is_number()) {
+			double rounded = std::round(state.metadata.duration * 1000.0) / 1000.0;
+			metaObj["duration"] = rounded;
+		}
 		root["metadata"] = std::move(metaObj);
 	}
 	// Top-level actions from the first script
@@ -516,6 +520,10 @@ void OFS_Project::ExportFunscript11Quick() noexcept
 	{
 		nlohmann::json metaObj;
 		OFS::Serializer<false>::Serialize(state.metadata, metaObj);
+		if (metaObj.contains("duration") && metaObj["duration"].is_number()) {
+			double rounded = std::round(state.metadata.duration * 1000.0) / 1000.0;
+			metaObj["duration"] = rounded;
+		}
 		root["metadata"] = std::move(metaObj);
 	}
 	// Top-level actions from first script

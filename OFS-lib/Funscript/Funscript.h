@@ -77,7 +77,7 @@ public:
 		std::string description;
 		std::string license;
 		std::string notes;
-		int64_t duration = 0;
+		double duration = 0.0;
 	};
 
 	template<typename S>

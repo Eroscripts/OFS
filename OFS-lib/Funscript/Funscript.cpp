@@ -822,6 +822,11 @@ void Funscript::Serialize(nlohmann::json& json, const FunscriptData& funscriptDa
 
 	auto& jsonMetadata = json["metadata"];
 	OFS::Serializer<false>::Serialize(metadata, jsonMetadata);
+	// Ensure duration is saved with millisecond precision (0.000)
+	if (jsonMetadata.contains("duration") && jsonMetadata["duration"].is_number()) {
+		double rounded = std::round(metadata.duration * 1000.0) / 1000.0;
+		jsonMetadata["duration"] = rounded;
+	}
 	if(includeChapters)
 	{
 		auto& chapters = ChapterState::StaticStateSlow();

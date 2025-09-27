@@ -817,8 +817,6 @@ void Funscript::Serialize(nlohmann::json& json, const FunscriptData& funscriptDa
 	json["actions"] = nlohmann::json::array();
 	json["metadata"] = nlohmann::json::object();
 	json["version"] = "1.0";
-	json["inverted"] = false;
-	json["range"] = 100;
 
 	auto& jsonMetadata = json["metadata"];
 	OFS::Serializer<false>::Serialize(metadata, jsonMetadata);
@@ -826,6 +824,12 @@ void Funscript::Serialize(nlohmann::json& json, const FunscriptData& funscriptDa
 	if (jsonMetadata.contains("duration") && jsonMetadata["duration"].is_number()) {
 		double rounded = std::round(metadata.duration * 1000.0) / 1000.0;
 		jsonMetadata["duration"] = rounded;
+	}
+	// Add a human-readable duration string for compatibility consumers
+	{
+		char durationBuf[32] = {};
+		Util::FormatTime(durationBuf, sizeof(durationBuf), (float)metadata.duration, true);
+		jsonMetadata["durationTime"] = std::string(durationBuf);
 	}
 	if(includeChapters)
 	{

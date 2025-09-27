@@ -453,28 +453,9 @@ void OFS_Project::ExportFunscript2Quick() noexcept
 	baseRel.replace_extension(".funscript");
 	auto outPath = MakePathAbsolute(baseRel.u8string());
 
-	// Assemble 2.0 JSON
-	nlohmann::json root;
+	// Start from the primary axis as fully serialized 1.0 (keeps chapters/bookmarks)
+	nlohmann::json root = Funscripts[0]->Serialize(state.metadata, true);
 	root["version"] = "2.0";
-	root["inverted"] = false;
-	root["range"] = 100;
-	{
-		// Metadata from project
-		nlohmann::json metaObj;
-		OFS::Serializer<false>::Serialize(state.metadata, metaObj);
-		if (metaObj.contains("duration") && metaObj["duration"].is_number()) {
-			double rounded = std::round(state.metadata.duration * 1000.0) / 1000.0;
-			metaObj["duration"] = rounded;
-		}
-		root["metadata"] = std::move(metaObj);
-	}
-	// Top-level actions from the first script
-	{
-		nlohmann::json mainObj;
-		Funscript::Serialize(mainObj, Funscripts[0]->Data(), state.metadata, true);
-		// keep only actions in main object
-		root["actions"] = std::move(mainObj["actions"]);
-	}
 	// Channels for subsequent scripts using filename suffix as channel name if present
 	{
 		nlohmann::json channels = nlohmann::json::object();
@@ -512,26 +493,9 @@ void OFS_Project::ExportFunscript11Quick() noexcept
 	baseRel.replace_extension(".funscript");
 	auto outPath = MakePathAbsolute(baseRel.u8string());
 
-	// Assemble 1.1 JSON
-	nlohmann::json root;
+	// Start from the primary axis as fully serialized 1.0 (keeps chapters/bookmarks)
+	nlohmann::json root = Funscripts[0]->Serialize(state.metadata, true);
 	root["version"] = "1.1";
-	root["inverted"] = false;
-	root["range"] = 100;
-	{
-		nlohmann::json metaObj;
-		OFS::Serializer<false>::Serialize(state.metadata, metaObj);
-		if (metaObj.contains("duration") && metaObj["duration"].is_number()) {
-			double rounded = std::round(state.metadata.duration * 1000.0) / 1000.0;
-			metaObj["duration"] = rounded;
-		}
-		root["metadata"] = std::move(metaObj);
-	}
-	// Top-level actions from first script
-	{
-		nlohmann::json mainObj;
-		Funscript::Serialize(mainObj, Funscripts[0]->Data(), state.metadata, true);
-		root["actions"] = std::move(mainObj["actions"]);
-	}
 	// axes array from subsequent scripts using id mapping inverse
 	{
 		auto channelNameToId = [](const std::string& name) -> std::string {

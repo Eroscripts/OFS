@@ -1444,6 +1444,11 @@ void OpenFunscripter::VideoDuration(const DurationChangeEvent* ev) noexcept
 void OpenFunscripter::VideoLoaded(const VideoLoadedEvent* ev) noexcept
 {
     OFS_PROFILE(__FUNCTION__);
+    // Ensure project metadata duration reflects the loaded video's duration
+    if (LoadedProject && player) {
+        auto& projectState = LoadedProject->State();
+        projectState.metadata.duration = player->Duration();
+    }
 }
 
 void OpenFunscripter::PlayPauseChange(const PlayPauseChangeEvent* ev) noexcept

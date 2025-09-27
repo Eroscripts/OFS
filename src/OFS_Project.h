@@ -72,6 +72,7 @@ public:
     void ExportFunscripts(const std::string& outputDir) noexcept;
     void ExportFunscript(const std::string& outputPath, int32_t idx) noexcept;
     void ExportFunscript2Quick() noexcept;
+    void ExportFunscript11Quick() noexcept;
 
     std::string MakePathAbsolute(const std::string& relPath) const noexcept;
     std::string MakePathRelative(const std::string& absPath) const noexcept;

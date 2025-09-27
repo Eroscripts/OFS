@@ -496,6 +496,67 @@ void OFS_Project::ExportFunscript2Quick() noexcept
 	Util::WriteFile(outPath.c_str(), jsonText.data(), jsonText.size());
 }
 
+void OFS_Project::ExportFunscript11Quick() noexcept
+{
+	// Export a single combined 1.1 funscript (axes array) next to first script's path
+	if (Funscripts.empty()) return;
+	auto& state = State();
+
+	// Determine output path based on first script
+	auto baseRel = Util::PathFromString(Funscripts[0]->RelativePath());
+	if (baseRel.empty()) return;
+	baseRel.replace_extension(".funscript");
+	auto outPath = MakePathAbsolute(baseRel.u8string());
+
+	// Assemble 1.1 JSON
+	nlohmann::json root;
+	root["version"] = "1.1";
+	root["inverted"] = false;
+	root["range"] = 100;
+	{
+		nlohmann::json metaObj;
+		OFS::Serializer<false>::Serialize(state.metadata, metaObj);
+		root["metadata"] = std::move(metaObj);
+	}
+	// Top-level actions from first script
+	{
+		nlohmann::json mainObj;
+		Funscript::Serialize(mainObj, Funscripts[0]->Data(), state.metadata, true);
+		root["actions"] = std::move(mainObj["actions"]);
+	}
+	// axes array from subsequent scripts using id mapping inverse
+	{
+		auto channelNameToId = [](const std::string& name) -> std::string {
+			if (name == "stroke") return "L0";
+			if (name == "surge") return "L1";
+			if (name == "sway") return "L2";
+			if (name == "twist") return "R0";
+			if (name == "roll") return "R1";
+			if (name == "pitch") return "R2";
+			if (name == "suck") return "A1";
+			return name;
+		};
+		nlohmann::json axes = nlohmann::json::array();
+		for (size_t i = 1; i < Funscripts.size(); ++i) {
+			auto& fs = Funscripts[i];
+			nlohmann::json chObj;
+			Funscript::Serialize(chObj, fs->Data(), state.metadata, false);
+			nlohmann::json actions = std::move(chObj["actions"]);
+			// Derive channel name from filename suffix
+			auto rel = Util::PathFromString(fs->RelativePath());
+			auto stem = rel.stem().u8string();
+			auto dot = stem.rfind('.');
+			std::string channelName = dot != std::string::npos ? stem.substr(dot + 1) : fs->Title();
+			std::string axisId = channelNameToId(channelName);
+			axes.emplace_back(nlohmann::json{ {"id", axisId}, {"actions", std::move(actions)} });
+		}
+		if (!axes.empty()) root["axes"] = std::move(axes);
+	}
+
+	auto jsonText = Util::SerializeJson(root, false);
+	Util::WriteFile(outPath.c_str(), jsonText.data(), jsonText.size());
+}
+
 void OFS_Project::loadMultiAxis(const std::string& rootScript) noexcept
 {
     std::vector<std::filesystem::path> relatedFiles;

@@ -2206,6 +2206,10 @@ void OpenFunscripter::ShowMainMenuBar() noexcept
                     quickExport2();
                 }
                 OFS::Tooltip(TR(QUICK_EXPORT_2_0_TOOLTIP));
+                if (ImGui::MenuItem(FMT(ICON_SHARE " %s", TR(QUICK_EXPORT_1_1)))) {
+                    LoadedProject->ExportFunscript11Quick();
+                }
+                OFS::Tooltip(TR(QUICK_EXPORT_1_1_TOOLTIP));
                 if (ImGui::MenuItem(FMT(ICON_SHARE " %s", TR(EXPORT_ACTIVE_SCRIPT)))) {
                     saveActiveScriptAs();
                 }

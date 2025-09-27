@@ -306,6 +306,8 @@ QUICK_EXPORT,Quick export,Quick export
 QUICK_EXPORT_TOOLTIP,Exports all scripts as .funscript in their default paths.,Exports all scripts as .funscript in their default paths.
 QUICK_EXPORT_2_0,Quick export (2.0),Quick export (2.0)
 QUICK_EXPORT_2_0_TOOLTIP,Exports combined 2.0 funscript with channels.,Exports combined 2.0 funscript with channels.
+QUICK_EXPORT_1_1,Quick export (1.1),Quick export (1.1)
+QUICK_EXPORT_1_1_TOOLTIP,Exports combined 1.1 funscript with axes.,Exports combined 1.1 funscript with axes.
 EXPORT_ACTIVE_SCRIPT,Export active script,Export active script
 EXPORT_ALL,Export all,Export all
 AUTO_BACKUP_TIMER_FMT,Auto Backup in %d seconds,Auto Backup in %d seconds

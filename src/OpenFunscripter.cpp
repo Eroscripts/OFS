@@ -462,7 +462,7 @@ void OpenFunscripter::registerBindings()
                 [this]() { quickExport2(); } },
             Tr::ACTION_QUICK_EXPORT_2_0, "Core",
             {
-                { ImGuiMod_Ctrl | ImGuiMod_Alt, ImGuiKey_S },
+                { ImGuiMod_Alt, ImGuiKey_S },
             });
 
         keys->RegisterAction(

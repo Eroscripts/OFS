@@ -404,7 +404,52 @@ void OFS_Project::ExportFunscripts() noexcept
         if (!script->RelativePath().empty()) {
             auto json = script->Serialize(state.metadata, true);
             script->ClearUnsavedEdits();
-            auto jsonText = Util::SerializeJson(json, false);
+            // Reorder keys using ordered_json: version, metadata (ordered), actions
+            nlohmann::ordered_json ordered;
+            ordered["version"] = json.contains("version") ? json["version"] : "1.0";
+            // Build ordered metadata
+            nlohmann::ordered_json orderedMeta;
+            const auto& meta = json.contains("metadata") && json["metadata"].is_object() ? json["metadata"] : nlohmann::json::object();
+            if (meta.contains("type")) orderedMeta["type"] = meta["type"];
+            if (meta.contains("title")) orderedMeta["title"] = meta["title"];
+            if (meta.contains("creator")) orderedMeta["creator"] = meta["creator"];
+            if (meta.contains("script_url")) orderedMeta["script_url"] = meta["script_url"];
+            if (meta.contains("video_url")) orderedMeta["video_url"] = meta["video_url"];
+            if (meta.contains("tags")) orderedMeta["tags"] = meta["tags"];
+            if (meta.contains("performers")) orderedMeta["performers"] = meta["performers"];
+            if (meta.contains("description")) orderedMeta["description"] = meta["description"];
+            if (meta.contains("license")) orderedMeta["license"] = meta["license"];
+            if (meta.contains("notes")) orderedMeta["notes"] = meta["notes"];
+            if (meta.contains("duration")) orderedMeta["duration"] = meta["duration"];
+            if (meta.contains("durationTime")) orderedMeta["durationTime"] = meta["durationTime"];
+            // extra preserved properties
+            if (meta.contains("topic_url")) orderedMeta["topic_url"] = meta["topic_url"];
+            if (meta.contains("topic_tags")) orderedMeta["topic_tags"] = meta["topic_tags"];
+            if (meta.contains("topic_creator")) orderedMeta["topic_creator"] = meta["topic_creator"];
+            if (meta.contains("topic_date")) orderedMeta["topic_date"] = meta["topic_date"];
+            if (meta.contains("bookmarks")) orderedMeta["bookmarks"] = meta["bookmarks"];
+            if (meta.contains("chapters")) orderedMeta["chapters"] = meta["chapters"];
+            // Append any unknown metadata keys to preserve them
+            if (meta.is_object()) {
+                for (auto it = meta.begin(); it != meta.end(); ++it) {
+                    const auto& key = it.key();
+                    if (!orderedMeta.contains(key)) {
+                        orderedMeta[key] = it.value();
+                    }
+                }
+            }
+            ordered["metadata"] = std::move(orderedMeta);
+            ordered["actions"] = json.contains("actions") ? json["actions"] : nlohmann::json::array();
+            // Preserve any unknown top-level keys
+            if (json.is_object()) {
+                for (auto it = json.begin(); it != json.end(); ++it) {
+                    const auto& key = it.key();
+                    if (!ordered.contains(key)) {
+                        ordered[key] = it.value();
+                    }
+                }
+            }
+            auto jsonText = ordered.dump(-1, ' ');
             Util::WriteFile(MakePathAbsolute(script->RelativePath()).c_str(), jsonText.data(), jsonText.size());
         }
     }
@@ -420,7 +465,48 @@ void OFS_Project::ExportFunscripts(const std::string& outputDir) noexcept
             auto outputPath = (Util::PathFromString(outputDir) / filename).u8string();
             auto json = script->Serialize(state.metadata, true);
             script->ClearUnsavedEdits();
-            auto jsonText = Util::SerializeJson(json, false);
+            // Reorder keys using ordered_json: version, metadata (ordered), actions
+            nlohmann::ordered_json ordered;
+            ordered["version"] = json.contains("version") ? json["version"] : "1.0";
+            nlohmann::ordered_json orderedMeta;
+            const auto& meta = json.contains("metadata") && json["metadata"].is_object() ? json["metadata"] : nlohmann::json::object();
+            if (meta.contains("type")) orderedMeta["type"] = meta["type"];
+            if (meta.contains("title")) orderedMeta["title"] = meta["title"];
+            if (meta.contains("creator")) orderedMeta["creator"] = meta["creator"];
+            if (meta.contains("script_url")) orderedMeta["script_url"] = meta["script_url"];
+            if (meta.contains("video_url")) orderedMeta["video_url"] = meta["video_url"];
+            if (meta.contains("tags")) orderedMeta["tags"] = meta["tags"];
+            if (meta.contains("performers")) orderedMeta["performers"] = meta["performers"];
+            if (meta.contains("description")) orderedMeta["description"] = meta["description"];
+            if (meta.contains("license")) orderedMeta["license"] = meta["license"];
+            if (meta.contains("notes")) orderedMeta["notes"] = meta["notes"];
+            if (meta.contains("duration")) orderedMeta["duration"] = meta["duration"];
+            if (meta.contains("durationTime")) orderedMeta["durationTime"] = meta["durationTime"];
+            if (meta.contains("topic_url")) orderedMeta["topic_url"] = meta["topic_url"];
+            if (meta.contains("topic_tags")) orderedMeta["topic_tags"] = meta["topic_tags"];
+            if (meta.contains("topic_creator")) orderedMeta["topic_creator"] = meta["topic_creator"];
+            if (meta.contains("topic_date")) orderedMeta["topic_date"] = meta["topic_date"];
+            if (meta.contains("bookmarks")) orderedMeta["bookmarks"] = meta["bookmarks"];
+            if (meta.contains("chapters")) orderedMeta["chapters"] = meta["chapters"];
+            if (meta.is_object()) {
+                for (auto it = meta.begin(); it != meta.end(); ++it) {
+                    const auto& key = it.key();
+                    if (!orderedMeta.contains(key)) {
+                        orderedMeta[key] = it.value();
+                    }
+                }
+            }
+            ordered["metadata"] = std::move(orderedMeta);
+            ordered["actions"] = json.contains("actions") ? json["actions"] : nlohmann::json::array();
+            if (json.is_object()) {
+                for (auto it = json.begin(); it != json.end(); ++it) {
+                    const auto& key = it.key();
+                    if (!ordered.contains(key)) {
+                        ordered[key] = it.value();
+                    }
+                }
+            }
+            auto jsonText = ordered.dump(-1, ' ');
             Util::WriteFile(outputPath.c_str(), jsonText.data(), jsonText.size());
         }
     }
@@ -434,7 +520,48 @@ void OFS_Project::ExportFunscript(const std::string& outputPath, int32_t idx) no
     Funscripts[idx]->ClearUnsavedEdits();
     // Using this function changes the default path
     Funscripts[idx]->UpdateRelativePath(MakePathRelative(outputPath));
-    auto jsonText = Util::SerializeJson(json, false);
+    // Reorder keys using ordered_json: version, metadata (ordered), actions
+    nlohmann::ordered_json ordered;
+    ordered["version"] = json.contains("version") ? json["version"] : "1.0";
+    nlohmann::ordered_json orderedMeta;
+    const auto& meta = json.contains("metadata") && json["metadata"].is_object() ? json["metadata"] : nlohmann::json::object();
+    if (meta.contains("type")) orderedMeta["type"] = meta["type"];
+    if (meta.contains("title")) orderedMeta["title"] = meta["title"];
+    if (meta.contains("creator")) orderedMeta["creator"] = meta["creator"];
+    if (meta.contains("script_url")) orderedMeta["script_url"] = meta["script_url"];
+    if (meta.contains("video_url")) orderedMeta["video_url"] = meta["video_url"];
+    if (meta.contains("tags")) orderedMeta["tags"] = meta["tags"];
+    if (meta.contains("performers")) orderedMeta["performers"] = meta["performers"];
+    if (meta.contains("description")) orderedMeta["description"] = meta["description"];
+    if (meta.contains("license")) orderedMeta["license"] = meta["license"];
+    if (meta.contains("notes")) orderedMeta["notes"] = meta["notes"];
+    if (meta.contains("duration")) orderedMeta["duration"] = meta["duration"];
+    if (meta.contains("durationTime")) orderedMeta["durationTime"] = meta["durationTime"];
+    if (meta.contains("topic_url")) orderedMeta["topic_url"] = meta["topic_url"];
+    if (meta.contains("topic_tags")) orderedMeta["topic_tags"] = meta["topic_tags"];
+    if (meta.contains("topic_creator")) orderedMeta["topic_creator"] = meta["topic_creator"];
+    if (meta.contains("topic_date")) orderedMeta["topic_date"] = meta["topic_date"];
+    if (meta.contains("bookmarks")) orderedMeta["bookmarks"] = meta["bookmarks"];
+    if (meta.contains("chapters")) orderedMeta["chapters"] = meta["chapters"];
+    if (meta.is_object()) {
+        for (auto it = meta.begin(); it != meta.end(); ++it) {
+            const auto& key = it.key();
+            if (!orderedMeta.contains(key)) {
+                orderedMeta[key] = it.value();
+            }
+        }
+    }
+    ordered["metadata"] = std::move(orderedMeta);
+    ordered["actions"] = json.contains("actions") ? json["actions"] : nlohmann::json::array();
+    if (json.is_object()) {
+        for (auto it = json.begin(); it != json.end(); ++it) {
+            const auto& key = it.key();
+            if (!ordered.contains(key)) {
+                ordered[key] = it.value();
+            }
+        }
+    }
+    auto jsonText = ordered.dump(-1, ' ');
     Util::WriteFile(outputPath.c_str(), jsonText.data(), jsonText.size());
 }
 
@@ -476,8 +603,44 @@ void OFS_Project::ExportFunscript2Quick() noexcept
 		if (!channels.empty()) root["channels"] = std::move(channels);
 	}
 
-	// Write file (ensure extension remains .funscript)
-	auto jsonText = Util::SerializeJson(root, false);
+    // Write file with ordered keys: version, metadata (ordered), actions, channels
+    nlohmann::ordered_json ordered;
+    ordered["version"] = root.contains("version") ? root["version"] : "2.0";
+    {
+        nlohmann::ordered_json orderedMeta;
+        const auto& meta = root.contains("metadata") && root["metadata"].is_object() ? root["metadata"] : nlohmann::json::object();
+        if (meta.contains("type")) orderedMeta["type"] = meta["type"];
+        if (meta.contains("title")) orderedMeta["title"] = meta["title"];
+        if (meta.contains("creator")) orderedMeta["creator"] = meta["creator"];
+        if (meta.contains("script_url")) orderedMeta["script_url"] = meta["script_url"];
+        if (meta.contains("video_url")) orderedMeta["video_url"] = meta["video_url"];
+        if (meta.contains("tags")) orderedMeta["tags"] = meta["tags"];
+        if (meta.contains("performers")) orderedMeta["performers"] = meta["performers"];
+        if (meta.contains("description")) orderedMeta["description"] = meta["description"];
+        if (meta.contains("license")) orderedMeta["license"] = meta["license"];
+        if (meta.contains("notes")) orderedMeta["notes"] = meta["notes"];
+        if (meta.contains("duration")) orderedMeta["duration"] = meta["duration"];
+        if (meta.contains("durationTime")) orderedMeta["durationTime"] = meta["durationTime"];
+        if (meta.contains("topic_url")) orderedMeta["topic_url"] = meta["topic_url"];
+        if (meta.contains("topic_tags")) orderedMeta["topic_tags"] = meta["topic_tags"];
+        if (meta.contains("topic_creator")) orderedMeta["topic_creator"] = meta["topic_creator"];
+        if (meta.contains("topic_date")) orderedMeta["topic_date"] = meta["topic_date"];
+        if (meta.contains("bookmarks")) orderedMeta["bookmarks"] = meta["bookmarks"];
+        if (meta.contains("chapters")) orderedMeta["chapters"] = meta["chapters"];
+        ordered["metadata"] = std::move(orderedMeta);
+    }
+    ordered["actions"] = root.contains("actions") ? root["actions"] : nlohmann::json::array();
+    if (root.contains("channels")) ordered["channels"] = root["channels"];
+    // Preserve any unknown top-level keys
+    if (root.is_object()) {
+        for (auto it = root.begin(); it != root.end(); ++it) {
+            const auto& key = it.key();
+            if (!ordered.contains(key)) {
+                ordered[key] = it.value();
+            }
+        }
+    }
+    auto jsonText = ordered.dump(-1, ' ');
 	Util::WriteFile(outPath.c_str(), jsonText.data(), jsonText.size());
 }
 
@@ -525,7 +688,43 @@ void OFS_Project::ExportFunscript11Quick() noexcept
 		if (!axes.empty()) root["axes"] = std::move(axes);
 	}
 
-	auto jsonText = Util::SerializeJson(root, false);
+    // Write file with ordered keys: version, metadata (ordered), actions, axes
+    nlohmann::ordered_json ordered;
+    ordered["version"] = root.contains("version") ? root["version"] : "1.1";
+    {
+        nlohmann::ordered_json orderedMeta;
+        const auto& meta = root.contains("metadata") && root["metadata"].is_object() ? root["metadata"] : nlohmann::json::object();
+        if (meta.contains("type")) orderedMeta["type"] = meta["type"];
+        if (meta.contains("title")) orderedMeta["title"] = meta["title"];
+        if (meta.contains("creator")) orderedMeta["creator"] = meta["creator"];
+        if (meta.contains("script_url")) orderedMeta["script_url"] = meta["script_url"];
+        if (meta.contains("video_url")) orderedMeta["video_url"] = meta["video_url"];
+        if (meta.contains("tags")) orderedMeta["tags"] = meta["tags"];
+        if (meta.contains("performers")) orderedMeta["performers"] = meta["performers"];
+        if (meta.contains("description")) orderedMeta["description"] = meta["description"];
+        if (meta.contains("license")) orderedMeta["license"] = meta["license"];
+        if (meta.contains("notes")) orderedMeta["notes"] = meta["notes"];
+        if (meta.contains("duration")) orderedMeta["duration"] = meta["duration"];
+        if (meta.contains("durationTime")) orderedMeta["durationTime"] = meta["durationTime"];
+        if (meta.contains("topic_url")) orderedMeta["topic_url"] = meta["topic_url"];
+        if (meta.contains("topic_tags")) orderedMeta["topic_tags"] = meta["topic_tags"];
+        if (meta.contains("topic_creator")) orderedMeta["topic_creator"] = meta["topic_creator"];
+        if (meta.contains("topic_date")) orderedMeta["topic_date"] = meta["topic_date"];
+        if (meta.contains("bookmarks")) orderedMeta["bookmarks"] = meta["bookmarks"];
+        if (meta.contains("chapters")) orderedMeta["chapters"] = meta["chapters"];
+        ordered["metadata"] = std::move(orderedMeta);
+    }
+    ordered["actions"] = root.contains("actions") ? root["actions"] : nlohmann::json::array();
+    if (root.contains("axes")) ordered["axes"] = root["axes"];
+    if (root.is_object()) {
+        for (auto it = root.begin(); it != root.end(); ++it) {
+            const auto& key = it.key();
+            if (!ordered.contains(key)) {
+                ordered[key] = it.value();
+            }
+        }
+    }
+    auto jsonText = ordered.dump(-1, ' ');
 	Util::WriteFile(outPath.c_str(), jsonText.data(), jsonText.size());
 }
 

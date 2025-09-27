@@ -78,6 +78,11 @@ public:
 		std::string license;
 		std::string notes;
 		double duration = 0.0;
+		// Extra properties to preserve external metadata
+		std::string topic_url;
+		std::vector<std::string> topic_tags;
+		std::string topic_creator;
+		std::string topic_date;
 	};
 
 	template<typename S>
@@ -289,4 +294,8 @@ REFL_TYPE(Funscript::Metadata)
 	REFL_FIELD(license)
 	REFL_FIELD(notes)
 	REFL_FIELD(duration)
+	REFL_FIELD(topic_url)
+	REFL_FIELD(topic_tags)
+	REFL_FIELD(topic_creator)
+	REFL_FIELD(topic_date)
 REFL_END

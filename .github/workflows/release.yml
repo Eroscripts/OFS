@@ -90,7 +90,11 @@ jobs:
           
           # Deploy dependencies
           export DISABLE_COPYRIGHT_FILES_DEPLOYMENT=1
-          ./linuxdeploy-x86_64.AppImage -e OpenFunscripter --appdir=AppDir
+          ./linuxdeploy-x86_64.AppImage \
+            --executable=OpenFunscripter \
+            --appdir=AppDir \
+            --desktop-file=AppDir/openfunscripter.desktop \
+            --icon-file=AppDir/logo256.png
           
           # Build AppImage
           ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir/

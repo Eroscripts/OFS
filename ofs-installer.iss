@@ -21,7 +21,7 @@ Source: "bin\{#Configuration}\*.dll"; DestDir: "{app}"
 Source: "data\*"; Flags: recursesubdirs; DestDir: "{app}\data"
 
 [Icons]
-Name: "{commonprograms}\OpenFunscripter"; Filename: "{app}\OpenFunscripter.exe"
+Name: "{commonprograms}\OpenFunscripter"; Filename: "{app}\OpenFunscripter.exe"; IconFilename: "{app}\OpenFunscripter.exe"
 
 [Code]
 // Uninstall on install code taken from https://stackoverflow.com/a/2099805/4040754

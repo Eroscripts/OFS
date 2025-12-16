@@ -26,14 +26,8 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@v1
-        with:
-          key: windows-${{ env.BUILD_TYPE }}
-          variant: sccache
-
       - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -G "Visual Studio 17 2022" -A x64 -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -G "Visual Studio 17 2022" -A x64
 
       - name: Build
         run: cmake --build build --config ${{ env.BUILD_TYPE }} --target OpenFunscripter
@@ -52,18 +46,13 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@v1
-        with:
-          key: linux-${{ env.BUILD_TYPE }}
-
       - name: Install Dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libmpv-dev libglvnd-dev
 
       - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
 
       - name: Build
         run: cmake --build build --config ${{ env.BUILD_TYPE }} --target OpenFunscripter
@@ -82,16 +71,11 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Setup ccache
-        uses: hendrikmuhs/ccache-action@v1
-        with:
-          key: macos-${{ env.BUILD_TYPE }}
-
       - name: Install Dependencies
-        run: brew install llvm mpv ccache
+        run: brew install llvm mpv
 
       - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 
       - name: Build
         run: cmake --build build --config ${{ env.BUILD_TYPE }} --target OpenFunscripter

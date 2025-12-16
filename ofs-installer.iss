@@ -2,7 +2,7 @@
 
 [Setup]
 AppName=OpenFunscripter
-AppVersion=4.0.7
+AppVersion=4.0.8
 AppPublisher=OpenFunscripter
 AppPublisherURL=https://github.com/Eroscripts/OFS
 AppId=OpenFunscripter/OFS

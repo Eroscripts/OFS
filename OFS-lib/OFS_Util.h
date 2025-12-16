@@ -20,9 +20,15 @@
 #include "OFS_Profiling.h"
 #include "OFS_FileLogging.h"
 
-#include "emmintrin.h" // for _mm_pause
-
-#define OFS_PAUSE_INTRIN _mm_pause
+// CPU pause/yield hint for spin-waiting
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+    #include "emmintrin.h"
+    #define OFS_PAUSE_INTRIN _mm_pause
+#elif defined(__aarch64__) || defined(_M_ARM64)
+    #define OFS_PAUSE_INTRIN() __asm__ __volatile__("yield")
+#else
+    #define OFS_PAUSE_INTRIN() ((void)0)
+#endif
 
 // helper for FontAwesome. Version 4.7.0 2016 ttf
 #define ICON_FOLDER_OPEN "\xef\x81\xbc"

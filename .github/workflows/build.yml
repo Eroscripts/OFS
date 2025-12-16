@@ -1,0 +1,103 @@
+name: Build
+
+on:
+  workflow_call:
+    inputs:
+      artifact_suffix:
+        description: 'Suffix for artifact names'
+        required: false
+        default: ''
+        type: string
+      retention_days:
+        description: 'Artifact retention days'
+        required: false
+        default: 14
+        type: number
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: windows-${{ env.BUILD_TYPE }}
+          variant: sccache
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -G "Visual Studio 17 2022" -A x64 -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+
+      - name: Build
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --target OpenFunscripter
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-windows${{ inputs.artifact_suffix }}
+          path: bin/Release/*
+          retention-days: ${{ inputs.retention_days }}
+
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: linux-${{ env.BUILD_TYPE }}
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libmpv-dev libglvnd-dev
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Build
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --target OpenFunscripter
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-linux${{ inputs.artifact_suffix }}
+          path: bin/OpenFunscripter
+          retention-days: ${{ inputs.retention_days }}
+
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1
+        with:
+          key: macos-${{ env.BUILD_TYPE }}
+
+      - name: Install Dependencies
+        run: brew install llvm mpv ccache
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+      - name: Build
+        run: cmake --build build --config ${{ env.BUILD_TYPE }} --target OpenFunscripter
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: build-macos${{ inputs.artifact_suffix }}
+          path: bin/OpenFunscripter.app
+          retention-days: ${{ inputs.retention_days }}

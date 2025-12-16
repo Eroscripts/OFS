@@ -8,79 +8,70 @@ on:
 permissions:
   contents: write
 
-env:
-  BUILD_TYPE: Release
-
 jobs:
-  windows:
-    runs-on: windows-2022
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      artifact_suffix: -release
+      retention_days: 1
 
+  package-windows:
+    needs: build
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download build
+        uses: actions/download-artifact@v4
         with:
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Configure CMake
-        run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -G "Visual Studio 17 2022" -A x64
-
-      - name: Build
-        run: |
-          cmake --build build --config ${{ env.BUILD_TYPE }} --target OpenFunscripter
+          name: build-windows-release
+          path: bin/Release
 
       - name: Create Zip
-        run: |
-          Compress-Archive -Path "bin\Release\*" -DestinationPath "OFS-${{ github.ref_name }}-win64.zip"
+        run: Compress-Archive -Path "bin\Release\*" -DestinationPath "OFS-${{ github.ref_name }}-win64.zip"
 
       - name: Install Inno Setup
-        run: |
-          choco install -y -r --no-progress InnoSetup
+        run: choco install -y -r --no-progress InnoSetup
 
       - name: Build Installer
-        run: |
-          iscc "ofs-installer.iss"
+        run: iscc "ofs-installer.iss"
 
       - name: Rename Installer
-        run: |
-          Move-Item "installer\ofs-installer.exe" "OFS-${{ github.ref_name }}-win64-setup.exe"
+        run: Move-Item "installer\ofs-installer.exe" "OFS-${{ github.ref_name }}-win64-setup.exe"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: windows-release
+          name: release-windows
           path: |
             OFS-${{ github.ref_name }}-win64.zip
             OFS-${{ github.ref_name }}-win64-setup.exe
           retention-days: 1
 
-  linux:
+  package-linux:
+    needs: build
     runs-on: ubuntu-22.04
-
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          fetch-depth: 0
 
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential libmpv-dev libglvnd-dev wget patchelf libgtk-3-dev librsvg2-dev libfuse2
+          sudo apt-get install -y wget patchelf libgtk-3-dev librsvg2-dev libfuse2
 
-      - name: Configure CMake
-        run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }}
-
-      - name: Build
-        run: |
-          cmake --build build --config ${{ env.BUILD_TYPE }} --target OpenFunscripter
+      - name: Download build
+        uses: actions/download-artifact@v4
+        with:
+          name: build-linux-release
+          path: bin
 
       - name: Create AppImage
         working-directory: bin
         run: |
+          chmod +x OpenFunscripter
+          
           wget -q "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage"
-          wget -q "https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage"
-          chmod +x linuxdeploy-x86_64.AppImage appimagetool-x86_64.AppImage
+          wget -q "https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/download/continuous/linuxdeploy-plugin-appimage-x86_64.AppImage"
+          chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-appimage-x86_64.AppImage
 
           # Setup AppDir structure
           cp -r "${{ github.workspace }}/AppImage" AppDir
@@ -88,60 +79,45 @@ jobs:
           mkdir -p AppDir/usr/bin
           cp -R "${{ github.workspace }}/data" AppDir/usr/bin/
           
-          # Deploy dependencies
+          # Deploy dependencies and build AppImage
           export DISABLE_COPYRIGHT_FILES_DEPLOYMENT=1
+          export OUTPUT="OFS-${{ github.ref_name }}-linux-x86_64.AppImage"
           ./linuxdeploy-x86_64.AppImage \
             --executable=OpenFunscripter \
             --appdir=AppDir \
             --desktop-file=AppDir/openfunscripter.desktop \
-            --icon-file=AppDir/logo256.png
-          
-          # Build AppImage
-          ARCH=x86_64 ./appimagetool-x86_64.AppImage AppDir/
-          mv OpenFunscripter-x86_64.AppImage "OFS-${{ github.ref_name }}-linux-x86_64.AppImage"
+            --icon-file=AppDir/logo256.png \
+            --output=appimage
 
       - uses: actions/upload-artifact@v4
         with:
-          name: linux-release
+          name: release-linux
           path: bin/OFS-${{ github.ref_name }}-linux-x86_64.AppImage
           retention-days: 1
 
-  macos:
+  package-macos:
+    needs: build
     runs-on: macos-14
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Download build
+        uses: actions/download-artifact@v4
         with:
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Install Dependencies
-        run: |
-          brew install llvm mpv
-
-      - name: Configure CMake
-        run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-
-      - name: Build
-        run: |
-          cmake --build build --config ${{ env.BUILD_TYPE }} --target OpenFunscripter
+          name: build-macos-release
+          path: bin
 
       - name: Create Zip
         working-directory: bin
-        run: |
-          zip -r "OFS-${{ github.ref_name }}-macos.zip" OpenFunscripter.app
+        run: zip -r "OFS-${{ github.ref_name }}-macos.zip" OpenFunscripter.app
 
       - uses: actions/upload-artifact@v4
         with:
-          name: macos-release
+          name: release-macos
           path: bin/OFS-${{ github.ref_name }}-macos.zip
           retention-days: 1
 
   publish:
-    needs: [windows, linux, macos]
+    needs: [package-windows, package-linux, package-macos]
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -151,12 +127,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          pattern: release-*
           merge-multiple: true
 
       - name: Generate Changelog
         id: changelog
         run: |
-          # Get the previous tag (if any)
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           
           if [ -n "$PREV_TAG" ]; then
@@ -167,10 +143,8 @@ jobs:
             CHANGELOG=$(git log --pretty=format:"- %s (%h)" -50)
           fi
           
-          # Write to file for multiline output
           echo "$CHANGELOG" > changelog.txt
           
-          # Also set as output using delimiter
           {
             echo "changelog<<EOF"
             echo "$CHANGELOG"
@@ -184,8 +158,6 @@ jobs:
           body: |
             ## What's Changed
             ${{ steps.changelog.outputs.changelog }}
-          files: |
-            artifacts/*
+          files: artifacts/*
           draft: false
           prerelease: false
-

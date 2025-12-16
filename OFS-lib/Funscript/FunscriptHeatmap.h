@@ -5,11 +5,10 @@
 class FunscriptHeatmap
 {
 public:
-	static constexpr float MaxSpeedPerSecond = 400.f;
+	static constexpr float MaxSpeedPerSecond = 2000.f;
 	static constexpr int16_t MaxResolution = 4096;
 
 	static ImGradient LineColors;
-	static ImGradient Colors;
 
 	static void Init() noexcept;
 

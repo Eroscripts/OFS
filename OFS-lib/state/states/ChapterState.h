@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 
+#include "nlohmann/json.hpp"
 #include "OFS_Event.h"
 
 struct Chapter
@@ -12,6 +13,7 @@ struct Chapter
     float endTime = 0.f;
     std::string name;
     ImColor color = IM_COL32(123, 56, 87, 255);
+    nlohmann::json unknownFields; // Preserve unrecognized fields from funscript
 
     std::string StartTimeToString() const noexcept;
     std::string EndTimeToString() const noexcept;
@@ -21,6 +23,7 @@ struct Bookmark
 {
     float time = 0.f;
     std::string name;
+    nlohmann::json unknownFields; // Preserve unrecognized fields from funscript
 
     std::string TimeToString() const noexcept;
 };

@@ -83,6 +83,9 @@ public:
 		std::vector<std::string> topic_tags;
 		std::string topic_creator;
 		std::string topic_date;
+		// Unknown fields preservation (fields not recognized by OFS)
+		nlohmann::json scriptUnknownFields;   // Unknown fields at script root level
+		nlohmann::json metadataUnknownFields; // Unknown fields within "metadata" object
 	};
 
 	template<typename S>

@@ -12,6 +12,36 @@
 #include <algorithm>
 #include <limits>
 
+// Helper: Extract unknown fields from JSON object (fields not in knownKeys)
+static nlohmann::json extractUnknown(const nlohmann::json& obj, std::initializer_list<const char*> knownKeys) {
+	nlohmann::json unknown = nlohmann::json::object();
+	if (!obj.is_object()) return unknown;
+	
+	for (auto it = obj.begin(); it != obj.end(); ++it) {
+		bool isKnown = false;
+		for (const char* key : knownKeys) {
+			if (it.key() == key) {
+				isKnown = true;
+				break;
+			}
+		}
+		if (!isKnown) {
+			unknown[it.key()] = it.value();
+		}
+	}
+	return unknown;
+}
+
+// Helper: Append unknown fields to JSON object (skip keys that already exist)
+static void appendUnknown(nlohmann::json& obj, const nlohmann::json& unknown) {
+	if (!unknown.is_object()) return;
+	for (auto it = unknown.begin(); it != unknown.end(); ++it) {
+		if (!obj.contains(it.key())) {
+			obj[it.key()] = it.value();
+		}
+	}
+}
+
 std::array<const char*, 9> Funscript::AxisNames = 
 {
 	"surge",
@@ -40,12 +70,23 @@ void Funscript::loadMetadata(const nlohmann::json& metadataObj, Funscript::Metad
 {
 	OFS_PROFILE(__FUNCTION__);
 	OFS::Serializer<false>::Deserialize(outMetadata, metadataObj);
+	
+	outMetadata.metadataUnknownFields = extractUnknown(metadataObj, {
+		"type", "title", "creator", "script_url", "video_url",
+		"tags", "performers", "description", "license", "notes", "duration",
+		"topic_url", "topic_tags", "topic_creator", "topic_date",
+		"bookmarks", "chapters", "durationTime"
+	});
 }
 
 void Funscript::saveMetadata(nlohmann::json& outMetadataObj, const Funscript::Metadata& inMetadata) noexcept
 {
 	OFS_PROFILE(__FUNCTION__);
 	OFS::Serializer<false>::Serialize(inMetadata, outMetadataObj);
+	
+	outMetadataObj.erase("scriptUnknownFields");
+	outMetadataObj.erase("metadataUnknownFields");
+	appendUnknown(outMetadataObj, inMetadata.metadataUnknownFields);
 }
 
 void Funscript::notifyActionsChanged(bool isEdit) noexcept
@@ -721,6 +762,10 @@ bool Funscript::Deserialize(const nlohmann::json& json, Funscript::Metadata* out
 		{
 			*outMetadata = Funscript::Metadata();
 		}
+		
+		outMetadata->scriptUnknownFields = extractUnknown(json, {
+			"actions", "metadata", "version", "inverted", "range"
+		});
 	}
 
 	if(loadChapters && json.contains("metadata"))
@@ -754,6 +799,7 @@ bool Funscript::Deserialize(const nlohmann::json& json, Funscript::Metadata* out
 					if(auto bookmark = chapterState.AddBookmark(time)) 
 					{
 						bookmark->name = std::move(name);
+						bookmark->unknownFields = extractUnknown(jsonBookmark, {"name", "time"});
 					}
 				}
 			}
@@ -797,6 +843,7 @@ bool Funscript::Deserialize(const nlohmann::json& json, Funscript::Metadata* out
 					if(auto chapter = chapterState.AddChapter(middlePoint, 1.f))
 					{
 						chapter->name = std::move(name);
+						chapter->unknownFields = extractUnknown(jsonChapter, {"name", "startTime", "endTime"});
 						// Set size is used to safely resize the chapter to the correct size
 						chapterState.SetChapterSize(*chapter, startTime);
 						chapterState.SetChapterSize(*chapter, endTime);
@@ -843,6 +890,7 @@ void Funscript::Serialize(nlohmann::json& json, const FunscriptData& funscriptDa
 					{"name", bookmark.name },
 					{"time", std::move(bookmark.TimeToString()) }
 				};
+				appendUnknown(jsonBookmark, bookmark.unknownFields);
 				jsonBookmarks.emplace_back(std::move(jsonBookmark));
 			}
 			jsonMetadata["bookmarks"] = std::move(jsonBookmarks);
@@ -857,6 +905,7 @@ void Funscript::Serialize(nlohmann::json& json, const FunscriptData& funscriptDa
 					{"startTime", std::move(chapter.StartTimeToString()) },
 					{"endTime", std::move(chapter.EndTimeToString()) },
 				};
+				appendUnknown(jsonChapter, chapter.unknownFields);
 				jsonChapters.emplace_back(std::move(jsonChapter));
 			}
 			jsonMetadata["chapters"] = std::move(jsonChapters);
@@ -887,4 +936,6 @@ void Funscript::Serialize(nlohmann::json& json, const FunscriptData& funscriptDa
 			LOG_WARN("Action was ignored since it had the same millisecond timestamp as the previous one.");
 		}
 	}
+	
+	appendUnknown(json, metadata.scriptUnknownFields);
 }

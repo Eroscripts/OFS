@@ -1,8 +1,8 @@
 # OpenFunscripter
 Can be used to create `.funscript` files. (NSFW)  
-The project is based on OpenGL, SDL2, ImGui, libmpv, & all these other great [libraries](https://github.com/OpenFunscripter/OpenFunscripter/tree/master/lib).
+The project is based on OpenGL, SDL2, ImGui, libmpv, & all these other great [libraries](https://github.com/Eroscripts/OFS/tree/master/lib).
 
-![OpenFunscripter Screenshot](https://github.com/OpenFunscripter/OpenFunscripter/blob/1b4f096be8c2f6c75ceed7787a300a86a13fb167/OpenFunscripter.jpg)
+![OpenFunscripter Screenshot](https://github.com/Eroscripts/OFS/blob/master/OpenFunscripter.jpg)
 
 ### How to build ( for people who want to contribute or fork )
 1. Clone the repository

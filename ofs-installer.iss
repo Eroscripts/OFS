@@ -2,9 +2,9 @@
 
 [Setup]
 AppName=OpenFunscripter
-AppVersion=1.0
+AppVersion=4.0.2
 AppPublisher=OpenFunscripter
-AppPublisherURL=www.github.com/OpenFunscripter/OFS
+AppPublisherURL=https://github.com/Eroscripts/OFS
 AppId=OpenFunscripter/OFS
 ArchitecturesInstallIn64BitMode=x64
 DefaultDirName={pf}\OpenFunscripter

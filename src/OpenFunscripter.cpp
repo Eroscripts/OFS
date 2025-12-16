@@ -2725,7 +2725,7 @@ void OpenFunscripter::ShowAboutWindow(bool* open) noexcept
     ImGui::Text("%s: %s", TR(GIT_COMMIT), OFS_LATEST_GIT_HASH);
 
     if (ImGui::Button(FMT("%s " ICON_GITHUB, TR(LATEST_RELEASE)), ImVec2(-1.f, 0.f))) {
-        Util::OpenUrl("https://github.com/OpenFunscripter/OFS/releases/latest");
+        Util::OpenUrl("https://github.com/Eroscripts/OFS/releases/latest");
     }
     ImGui::End();
 }

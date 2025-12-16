@@ -103,7 +103,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-macos-release
-          path: bin
+          path: bin/OpenFunscripter.app
 
       - name: Create Zip
         working-directory: bin

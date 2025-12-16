@@ -103,7 +103,7 @@ jobs:
           retention-days: 1
 
   macos:
-    runs-on: macos-14
+    runs-on: macos-13  # macos-14 is ARM64; OFS uses x86 SSE intrinsics
 
     steps:
       - uses: actions/checkout@v4

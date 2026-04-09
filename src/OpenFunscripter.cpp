@@ -10,6 +10,7 @@
 #include "OFS_Localization.h"
 
 #include "state/OpenFunscripterState.h"
+#include "state/MetadataEditorState.h"
 #include "state/states/VideoplayerWindowState.h"
 #include "state/states/BaseOverlayState.h"
 #include "state/states/ChapterState.h"
@@ -1823,6 +1824,12 @@ void OpenFunscripter::initProject() noexcept
     if (LoadedProject->IsValid()) {
         auto& projectState = LoadedProject->State();
         if (projectState.nudgeMetadata) {
+            // Apply saved default metadata template to new projects
+            auto& metaState = FunscriptMetadataState::State(metadataEditor->StateHandle());
+            auto savedDuration = projectState.metadata.duration;
+            projectState.metadata = metaState.defaultMetadata;
+            projectState.metadata.duration = savedDuration;
+
             const auto& prefState = PreferenceState::State(preferences->StateHandle());
             ShowMetadataEditor = prefState.showMetaOnNew;
             projectState.nudgeMetadata = false;

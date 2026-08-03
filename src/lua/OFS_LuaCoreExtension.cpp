@@ -121,6 +121,7 @@ function binding.spline_smooth()
             time_ms = action2.at + (i*pointEverySecond)
             spline_pos = catmullRom(action1.pos, action2.pos, action3.pos, action4.pos, s)
             spline_pos = clamp(spline_pos, 0, 100)
+            spline_pos = math.floor(spline_pos + 0.5)
             table.insert( smoothedActions, {at=time_ms, pos=spline_pos} )
         end
         ::continue::

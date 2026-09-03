@@ -15,6 +15,11 @@ struct OFS_DynFontAtlas {
 
     static ImFont* DefaultFont;
     static ImFont* DefaultFont2;
+    // Large digits-only face for numeric readouts. Rendering scales DOWN from this,
+    // which stays sharp, unlike scaling the UI font up. Restricting it to 0-9 keeps
+    // the atlas cost negligible despite the size. May be null if loading failed.
+    static ImFont* NumberFont;
+    static constexpr float NumberFontSize = 96.f;
 
     OFS_DynFontAtlas() noexcept;
 

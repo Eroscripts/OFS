@@ -23,24 +23,26 @@ class OFS_ImGuiAPI
     { return DragNumber(txt, current, 1.0); }
     static std::tuple<lua_Number, bool> DragNumber(const char* txt, lua_Number current, lua_Number stepSize) noexcept;
 
-    static std::tuple<lua_Integer, bool> DragIntWithoutStepSize(const char* txt, lua_Integer current) noexcept
+    // Integer widgets accept lua_Number and round internally so plugins passing
+    // a fractional Lua number (e.g. from arithmetic) don't error on marshalling.
+    static std::tuple<lua_Integer, bool> DragIntWithoutStepSize(const char* txt, lua_Number current) noexcept
     { return DragInt(txt, current, 1.0); }
-    static std::tuple<lua_Integer, bool> DragInt(const char* txt, lua_Integer current, lua_Integer stepSize) noexcept;
+    static std::tuple<lua_Integer, bool> DragInt(const char* txt, lua_Number current, lua_Number stepSize) noexcept;
 
     static std::tuple<std::string, bool> InputText(const char* txt, std::string current) noexcept;
 
-    static std::tuple<lua_Integer, bool> InputIntWithoutStepSize(const char* txt, lua_Integer current) noexcept
+    static std::tuple<lua_Integer, bool> InputIntWithoutStepSize(const char* txt, lua_Number current) noexcept
     { return InputInt(txt, current, 1); }
-    static std::tuple<lua_Integer, bool> InputInt(const char* txt, lua_Integer current, lua_Integer stepSize) noexcept;
+    static std::tuple<lua_Integer, bool> InputInt(const char* txt, lua_Number current, lua_Number stepSize) noexcept;
 
     static std::tuple<lua_Number, bool> InputNumberWithoutStepSize(const char* txt, lua_Number current) noexcept 
     { return InputNumber(txt, current, 0.0); }
     static std::tuple<lua_Number, bool> InputNumber(const char* txt, lua_Number current, lua_Number stepSize) noexcept;
 
     static std::tuple<lua_Number, bool> SliderNumber(const char* txt, lua_Number current, lua_Number min, lua_Number max) noexcept;
-    static std::tuple<lua_Integer, bool> SliderInt(const char* txt, lua_Integer current, lua_Integer min, lua_Integer max) noexcept;
+    static std::tuple<lua_Integer, bool> SliderInt(const char* txt, lua_Number current, lua_Number min, lua_Number max) noexcept;
 
-    static std::tuple<bool, bool> Checkbox(const char* txt, bool current) noexcept;
+    static std::tuple<bool, bool> Checkbox(const char* txt, sol::optional<bool> current) noexcept;
     static std::tuple<lua_Integer, bool> Combo(const char* txt, lua_Integer currentSelection, sol::table items) noexcept;
     static bool CollapsingHeader(const char* txt) noexcept;
 

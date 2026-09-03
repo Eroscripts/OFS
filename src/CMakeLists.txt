@@ -10,6 +10,9 @@ set(OPEN_FUNSCRIPTER_SOURCES
 
   "UI/OFS_Preferences.cpp"
   "UI/OFS_ScriptSimulator.cpp"
+  "UI/OFS_Simulator3D.cpp"
+  "UI/OFS_PreviewExporter.cpp"
+  "UI/OFS_TimelineRasterizer.cpp"
   "UI/OFS_SpecialFunctions.cpp"
   "UI/OFS_ScriptPositionsOverlays.cpp"
   "UI/OFS_DownloadFfmpeg.cpp"

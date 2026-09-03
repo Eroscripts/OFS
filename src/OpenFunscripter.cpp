@@ -10,6 +10,7 @@
 #include "OFS_Localization.h"
 
 #include "state/OpenFunscripterState.h"
+#include "state/MetadataEditorState.h"
 #include "state/states/VideoplayerWindowState.h"
 #include "state/states/BaseOverlayState.h"
 #include "state/states/ChapterState.h"
@@ -257,11 +258,16 @@ bool OpenFunscripter::Init(int argc, char* argv[])
         ShouldChangeActiveScriptEvent::HandleEvent(EVENT_SYSTEM_BIND(this, &OpenFunscripter::ScriptTimelineActiveScriptChanged)));
     EV::Queue().appendListener(ExportClipForChapter::EventType,
         ExportClipForChapter::HandleEvent(EVENT_SYSTEM_BIND(this, &OpenFunscripter::ExportClip)));
+    EV::Queue().appendListener(ExportPreviewForChapter::EventType,
+        ExportPreviewForChapter::HandleEvent(EVENT_SYSTEM_BIND(this, &OpenFunscripter::ExportPreview)));
 
     specialFunctions = std::make_unique<SpecialFunctionsWindow>();
     controllerInput = std::make_unique<ControllerInput>();
     controllerInput->Init();
     simulator.Init();
+    simulator3D.Init();
+    previewExporter = std::make_unique<OFS_PreviewExporter>();
+    previewExporter->Init();
 
     FunscriptHeatmap::Init();
     extensions = std::make_unique<OFS_LuaExtensions>();
@@ -339,6 +345,7 @@ void OpenFunscripter::setupDefaultLayout(bool force) noexcept
         ImGui::DockBuilderDockWindow(ScriptTimeline::WindowId, dock_positions_id);
         ImGui::DockBuilderDockWindow(ScriptingMode::WindowId, dock_mode_right_id);
         ImGui::DockBuilderDockWindow(ScriptSimulator::WindowId, dock_simulator_right_id);
+        ImGui::DockBuilderDockWindow(Simulator3D::WindowId, dock_simulator_right_id);
         ImGui::DockBuilderDockWindow(ActionEditorWindowId, dock_action_right_id);
         ImGui::DockBuilderDockWindow(StatisticsWindowId, dock_stats_right_id);
         ImGui::DockBuilderDockWindow(UndoSystem::WindowId, dock_undo_right_id);
@@ -436,6 +443,27 @@ void OpenFunscripter::registerBindings()
             {
                 { ImGuiMod_None, ImGuiKey_KeypadDivide },
             });
+        // Intermediate positions (5, 15, .. 95) on Shift + number row.
+        keys->RegisterAction({ "action_5", [this]() { addEditAction(5); } },
+            Tr::ACTION_ACTION_5, "Actions", { { ImGuiMod_Shift, ImGuiKey_1 } });
+        keys->RegisterAction({ "action_15", [this]() { addEditAction(15); } },
+            Tr::ACTION_ACTION_15, "Actions", { { ImGuiMod_Shift, ImGuiKey_2 } });
+        keys->RegisterAction({ "action_25", [this]() { addEditAction(25); } },
+            Tr::ACTION_ACTION_25, "Actions", { { ImGuiMod_Shift, ImGuiKey_3 } });
+        keys->RegisterAction({ "action_35", [this]() { addEditAction(35); } },
+            Tr::ACTION_ACTION_35, "Actions", { { ImGuiMod_Shift, ImGuiKey_4 } });
+        keys->RegisterAction({ "action_45", [this]() { addEditAction(45); } },
+            Tr::ACTION_ACTION_45, "Actions", { { ImGuiMod_Shift, ImGuiKey_5 } });
+        keys->RegisterAction({ "action_55", [this]() { addEditAction(55); } },
+            Tr::ACTION_ACTION_55, "Actions", { { ImGuiMod_Shift, ImGuiKey_6 } });
+        keys->RegisterAction({ "action_65", [this]() { addEditAction(65); } },
+            Tr::ACTION_ACTION_65, "Actions", { { ImGuiMod_Shift, ImGuiKey_7 } });
+        keys->RegisterAction({ "action_75", [this]() { addEditAction(75); } },
+            Tr::ACTION_ACTION_75, "Actions", { { ImGuiMod_Shift, ImGuiKey_8 } });
+        keys->RegisterAction({ "action_85", [this]() { addEditAction(85); } },
+            Tr::ACTION_ACTION_85, "Actions", { { ImGuiMod_Shift, ImGuiKey_9 } });
+        keys->RegisterAction({ "action_95", [this]() { addEditAction(95); } },
+            Tr::ACTION_ACTION_95, "Actions", { { ImGuiMod_Shift, ImGuiKey_0 } });
     }
 
     keys->RegisterGroup("Core", Tr::CORE_BINDING_GROUP);
@@ -1368,6 +1396,12 @@ void OpenFunscripter::ExportClip(const ExportClipForChapter* ev) noexcept
         });
 }
 
+void OpenFunscripter::ExportPreview(const ExportPreviewForChapter* ev) noexcept
+{
+    previewExporter->OpenForChapter(ev->chapter.startTime, ev->chapter.endTime);
+    ShowPreviewExporter = true;
+}
+
 void OpenFunscripter::FunscriptChanged(const FunscriptActionsChangedEvent* ev) noexcept
 {
     // the event passes the address of the Funscript
@@ -1601,6 +1635,9 @@ void OpenFunscripter::Step() noexcept
             specialFunctions->ShowFunctionsWindow(&ofsState.showSpecialFunctions);
             undoSystem->ShowUndoRedoHistory(&ofsState.showHistory);
             simulator.ShowSimulator(&ofsState.showSimulator, ActiveFunscript(), player->CurrentTime(), overlayState.SplineMode);
+            simulator3D.ShowWindow(&ofsState.showSimulator3D, LoadedFunscripts(), player->CurrentTime());
+            previewExporter->Update();
+            previewExporter->ShowWindow(&ShowPreviewExporter);
 
             if (ShowMetadataEditor) {
                 auto& projectState = LoadedProject->State();
@@ -1823,6 +1860,12 @@ void OpenFunscripter::initProject() noexcept
     if (LoadedProject->IsValid()) {
         auto& projectState = LoadedProject->State();
         if (projectState.nudgeMetadata) {
+            // Apply saved default metadata template to new projects (keep detected duration).
+            auto& metaState = FunscriptMetadataState::State(metadataEditor->StateHandle());
+            auto savedDuration = projectState.metadata.duration;
+            projectState.metadata = metaState.defaultMetadata;
+            projectState.metadata.duration = savedDuration;
+
             const auto& prefState = PreferenceState::State(preferences->StateHandle());
             ShowMetadataEditor = prefState.showMetaOnNew;
             projectState.nudgeMetadata = false;
@@ -2180,15 +2223,20 @@ void OpenFunscripter::ShowMainMenuBar() noexcept
                     ImGui::TextDisabled("%s", TR(NO_RECENT_FILES));
                 }
                 auto& recentFiles = ofsState.recentFiles;
-                for (auto it = recentFiles.rbegin(); it != recentFiles.rend(); ++it) {
+                int recentIdx = 0;
+                for (auto it = recentFiles.rbegin(); it != recentFiles.rend(); ++it, ++recentIdx) {
                     auto& recent = *it;
-                    if (ImGui::MenuItem(recent.name.c_str())) {
-                        if (!recent.projectPath.empty()) {
-                            closeWithoutSavingDialog([this, clickedFile = recent.projectPath]() {
-                                openFile(clickedFile);
-                            });
-                            break;
-                        }
+                    // recent.name can be empty (a stored path with no filename). Seed the
+                    // widget ID from the index and give a fallback label so ImGui never
+                    // gets an empty ID (which asserts at the root of the menu popup).
+                    ImGui::PushID(recentIdx);
+                    const bool clicked = ImGui::MenuItem(recent.name.empty() ? "(unnamed)" : recent.name.c_str());
+                    ImGui::PopID();
+                    if (clicked && !recent.projectPath.empty()) {
+                        closeWithoutSavingDialog([this, clickedFile = recent.projectPath]() {
+                            openFile(clickedFile);
+                        });
+                        break;
                     }
                 }
                 ImGui::Separator();
@@ -2273,22 +2321,31 @@ void OpenFunscripter::ShowMainMenuBar() noexcept
                         });
                     return it != app->LoadedFunscripts().end();
                 };
-                auto addNewShortcut = [this, fileAlreadyLoaded](const char* axisExt) noexcept {
-                    if (ImGui::MenuItem(axisExt)) {
-                        std::string newScriptPath;
-                        {
-                            auto root = Util::PathFromString(
-                                LoadedProject->MakePathAbsolute(LoadedFunscripts()[0]->RelativePath()));
-                            root.replace_extension(Util::Format(".%s.funscript", axisExt));
-                            newScriptPath = root.u8string();
-                        }
+                auto addAxisScript = [this, fileAlreadyLoaded](const char* axisExt) noexcept {
+                    std::string newScriptPath;
+                    {
+                        auto root = Util::PathFromString(
+                            LoadedProject->MakePathAbsolute(LoadedFunscripts()[0]->RelativePath()));
+                        root.replace_extension(Util::Format(".%s.funscript", axisExt));
+                        newScriptPath = root.u8string();
+                    }
 
-                        if (!fileAlreadyLoaded(newScriptPath)) {
-                            LoadedProject->AddFunscript(newScriptPath);
-                        }
+                    if (!fileAlreadyLoaded(newScriptPath)) {
+                        LoadedProject->AddFunscript(newScriptPath);
+                    }
+                };
+                auto addNewShortcut = [addAxisScript](const char* axisExt) noexcept {
+                    if (ImGui::MenuItem(axisExt)) {
+                        addAxisScript(axisExt);
                     }
                 };
                 if (ImGui::BeginMenu(TR(ADD_SHORTCUTS))) {
+                    // The five positional axes at once (skips any already loaded).
+                    static const char* multiAxes[] = { "surge", "sway", "twist", "roll", "pitch" };
+                    if (ImGui::MenuItem("All (surge, sway, twist, roll, pitch)")) {
+                        for (auto axis : multiAxes) addAxisScript(axis);
+                    }
+                    ImGui::Separator();
                     for (auto axis : Funscript::AxisNames) {
                         addNewShortcut(axis);
                     }
@@ -2501,6 +2558,8 @@ void OpenFunscripter::ShowMainMenuBar() noexcept
             if (ImGui::MenuItem(TR(STATISTICS), NULL, &ofsState.showStatistics)) {}
             if (ImGui::MenuItem(TR(UNDO_REDO_HISTORY), NULL, &ofsState.showHistory)) {}
             if (ImGui::MenuItem(TR(SIMULATOR), NULL, &ofsState.showSimulator)) {}
+            if (ImGui::MenuItem(TR(SIMULATOR_3D), NULL, &ofsState.showSimulator3D)) {}
+            if (ImGui::MenuItem("Animated Preview Export", NULL, &ShowPreviewExporter)) {}
             if (ImGui::MenuItem(TR(METADATA), NULL, &ShowMetadataEditor)) {}
             if (ImGui::MenuItem(TR(ACTION_EDITOR), NULL, &ofsState.showActionEditor)) {}
             if (ImGui::MenuItem(TR(SPECIAL_FUNCTIONS), NULL, &ofsState.showSpecialFunctions)) {}

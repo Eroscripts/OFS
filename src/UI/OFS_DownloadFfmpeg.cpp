@@ -106,7 +106,8 @@ void OFS_DownloadFfmpeg::DownloadFfmpegModal() noexcept
                 auto dlThread = [](void* data) -> int {
                     auto path = Util::PathFromString(Util::Prefpath());
                     auto downloadPath =(path / "ffmpeg.zip").wstring();
-                    URLDownloadToFileW(NULL, L"https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip",
+                    // "full" build (not "essentials") so encoders like libsvtav1 are available.
+                    URLDownloadToFileW(NULL, L"https://www.gyan.dev/ffmpeg/builds/ffmpeg-git-full.7z",
                         downloadPath.c_str(), 0, &cb);
                     return 0;
                 };

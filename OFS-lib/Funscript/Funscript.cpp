@@ -867,15 +867,14 @@ void Funscript::Serialize(nlohmann::json& json, const FunscriptData& funscriptDa
 
 	auto& jsonMetadata = json["metadata"];
 	OFS::Serializer<false>::Serialize(metadata, jsonMetadata);
-	// Ensure duration is saved with millisecond precision (0.000)
+	// Round duration to whole seconds for compatibility with XTPlayer.
 	if (jsonMetadata.contains("duration") && jsonMetadata["duration"].is_number()) {
-		double rounded = std::round(metadata.duration * 1000.0) / 1000.0;
-		jsonMetadata["duration"] = rounded;
+		jsonMetadata["duration"] = (int64_t)std::round(metadata.duration);
 	}
 	// Add a human-readable duration string for compatibility consumers
 	{
 		char durationBuf[32] = {};
-		Util::FormatTime(durationBuf, sizeof(durationBuf), (float)metadata.duration, true);
+		Util::FormatTime(durationBuf, sizeof(durationBuf), (float)metadata.duration, false);
 		jsonMetadata["durationTime"] = std::string(durationBuf);
 	}
 	if(includeChapters)

@@ -20,7 +20,7 @@ OFS_ScriptAPI::OFS_ScriptAPI(sol::usertype<class OFS_ExtensionAPI>& ofs) noexcep
     script["name"] = sol::readonly_property(&LuaFunscript::Name);
 
     auto action = L.new_usertype<LuaFunscriptAction>("Action",
-        sol::constructors<LuaFunscriptAction(lua_Number, lua_Integer), LuaFunscriptAction(lua_Number, lua_Integer, bool)>());
+        sol::constructors<LuaFunscriptAction(lua_Number, lua_Number), LuaFunscriptAction(lua_Number, lua_Number, bool)>());
     action["at"] = sol::property(&LuaFunscriptAction::at, &LuaFunscriptAction::set_at);
     action["pos"] = sol::property(&LuaFunscriptAction::pos, &LuaFunscriptAction::set_pos);
     action["selected"] = &LuaFunscriptAction::selected;

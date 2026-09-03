@@ -56,6 +56,7 @@ class OFS_Videoplayer
 
     uint16_t VideoWidth() const noexcept;
     uint16_t VideoHeight() const noexcept;
+    bool HasAudio() const noexcept; // true when the current media has an audio track
     float FrameTime() const noexcept;
     float CurrentSpeed() const noexcept;
     float Volume() const noexcept;

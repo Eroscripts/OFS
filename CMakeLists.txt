@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
 
+# Bundled dependencies (glm, SDL2, json, bitsery, civetweb, eventpp) still declare
+# cmake_minimum_required() < 3.5, which CMake 4.0+ rejects. This lets them configure
+# without editing each submodule. Cascades into all add_subdirectory() children.
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+
 project(scripter)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")

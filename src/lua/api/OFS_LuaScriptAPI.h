@@ -7,6 +7,7 @@
 #include <memory>
 #include <tuple>
 #include <set>
+#include <cmath>
 
 struct LuaFunscriptAction
 {
@@ -16,12 +17,14 @@ struct LuaFunscriptAction
     LuaFunscriptAction(FunscriptAction action, bool selected) noexcept
         : o(action), selected(selected) 
     {}
-    LuaFunscriptAction(lua_Number at, lua_Integer pos) noexcept
+    // pos is taken as a lua_Number and rounded so plugins can pass computed
+    // (non-integral) positions; sol won't match a float against lua_Integer.
+    LuaFunscriptAction(lua_Number at, lua_Number pos) noexcept
     {
         o.atS = std::max(0.0, at);
-        o.pos = Util::Clamp<lua_Integer>(pos, 0, 100);
+        o.pos = (int16_t)Util::Clamp<lua_Integer>((lua_Integer)std::llround(pos), 0, 100);
     }
-    LuaFunscriptAction(lua_Number at, lua_Integer pos, bool selected) 
+    LuaFunscriptAction(lua_Number at, lua_Number pos, bool selected)
         : LuaFunscriptAction(at, pos)
     {
         this->selected = selected;
@@ -42,9 +45,9 @@ struct LuaFunscriptAction
         return o.pos;
     }
 
-    inline void set_pos(lua_Integer pos) noexcept
-    {            
-        o.pos = Util::Clamp<lua_Integer>(pos, 0, 100);
+    inline void set_pos(lua_Number pos) noexcept
+    {
+        o.pos = (int16_t)Util::Clamp<lua_Integer>((lua_Integer)std::llround(pos), 0, 100);
     }
 };
 

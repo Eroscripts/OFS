@@ -81,3 +81,11 @@ class ExportClipForChapter : public OFS_Event<ExportClipForChapter>
     ExportClipForChapter(const Chapter& chapter) noexcept
         : chapter(chapter) {}
 };
+
+class ExportPreviewForChapter : public OFS_Event<ExportPreviewForChapter>
+{
+    public:
+    Chapter chapter;
+    ExportPreviewForChapter(const Chapter& chapter) noexcept
+        : chapter(chapter) {}
+};

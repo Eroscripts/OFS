@@ -137,63 +137,63 @@ void HeatmapShader::SpeedTex(uint32_t unit) noexcept
     glUniform1i(SpeedLoc, unit);
 }
 
+std::vector<std::pair<float, ImU32>> FunscriptHeatmap::LinePreset(int32_t profile) noexcept
+{
+    if (profile == LineProfile::Classic) {
+        // The original OpenFunscripter line palette: white -> green -> yellow -> red.
+        const ImU32 classic[] = {
+            IM_COL32(0xFF, 0xFF, 0xFF, 0xFF),
+            IM_COL32(0x66, 0xFF, 0x00, 0xFF),
+            IM_COL32(0xFF, 0xFF, 0x00, 0xFF),
+            IM_COL32(0xFF, 0x00, 0x00, 0xFF),
+        };
+        // Upstream OFS normalized speed to 400, not this fork's 2000. Compress the
+        // stops into that fraction of the speed axis so the mapping matches the
+        // original (fully red at >= 400/s) instead of looking washed out.
+        constexpr float kClassicMaxSpeed = 400.f;
+        const float scale = kClassicMaxSpeed / MaxSpeedPerSecond;
+        std::vector<std::pair<float, ImU32>> stops;
+        const int n = (int)(sizeof(classic) / sizeof(classic[0]));
+        for (int i = 0; i < n; ++i) stops.emplace_back(((float)i / (n - 1)) * scale, classic[i]);
+        return stops;
+    }
+
+    // Fork: detailed speed colors 0-2000 (step 50).
+    static const ImU32 fork[] = {
+        IM_COL32(0x00, 0xEE, 0xFF, 0xFF), IM_COL32(0x00, 0xFF, 0xF3, 0xFF), IM_COL32(0x00, 0xFF, 0x8A, 0xFF),
+        IM_COL32(0x00, 0xF7, 0x00, 0xFF), IM_COL32(0x78, 0xE0, 0x00, 0xFF), IM_COL32(0xE8, 0xBD, 0x00, 0xFF),
+        IM_COL32(0xFF, 0x8C, 0x00, 0xFF), IM_COL32(0xFF, 0x40, 0x00, 0xFF), IM_COL32(0xFF, 0x00, 0x00, 0xFF),
+        IM_COL32(0xFF, 0x00, 0x1E, 0xFF), IM_COL32(0xFF, 0x00, 0xAB, 0xFF), IM_COL32(0xFF, 0x00, 0xC4, 0xFF),
+        IM_COL32(0x96, 0x00, 0xC5, 0xFF), IM_COL32(0x77, 0x00, 0xF9, 0xFF), IM_COL32(0x52, 0x00, 0xFF, 0xFF),
+        IM_COL32(0x00, 0x00, 0xFF, 0xFF), IM_COL32(0x00, 0x03, 0xFE, 0xFF), IM_COL32(0x00, 0x5A, 0x9B, 0xFF),
+        IM_COL32(0x00, 0x57, 0x58, 0xFF), IM_COL32(0x00, 0x58, 0x44, 0xFF), IM_COL32(0x04, 0x57, 0x2D, 0xFF),
+        IM_COL32(0x32, 0x52, 0x10, 0xFF), IM_COL32(0x4A, 0x4C, 0x00, 0xFF), IM_COL32(0x5C, 0x44, 0x00, 0xFF),
+        IM_COL32(0x69, 0x3C, 0x00, 0xFF), IM_COL32(0x71, 0x34, 0x0A, 0xFF), IM_COL32(0x74, 0x2E, 0x27, 0xFF),
+        IM_COL32(0x73, 0x2D, 0x3E, 0xFF), IM_COL32(0x6D, 0x2E, 0x52, 0xFF), IM_COL32(0x62, 0x32, 0x64, 0xFF),
+        IM_COL32(0x54, 0x37, 0x72, 0xFF), IM_COL32(0x42, 0x3E, 0x7B, 0xFF), IM_COL32(0x2A, 0x45, 0x7D, 0xFF),
+        IM_COL32(0x00, 0x4C, 0x78, 0xFF), IM_COL32(0x00, 0x52, 0x6E, 0xFF), IM_COL32(0x00, 0x56, 0x5D, 0xFF),
+        IM_COL32(0x00, 0x58, 0x4A, 0xFF), IM_COL32(0x00, 0x57, 0x33, 0xFF), IM_COL32(0x29, 0x54, 0x19, 0xFF),
+        IM_COL32(0x44, 0x4E, 0x00, 0xFF), IM_COL32(0x57, 0x46, 0x00, 0xFF),
+    };
+    std::vector<std::pair<float, ImU32>> stops;
+    const int n = (int)(sizeof(fork) / sizeof(fork[0]));
+    for (int i = 0; i < n; ++i) stops.emplace_back((float)i / (n - 1), fork[i]);
+    return stops;
+}
+
+void FunscriptHeatmap::SetLineColors(const std::vector<std::pair<float, ImU32>>& stops) noexcept
+{
+    LineColors.clear();
+    for (auto& s : stops) LineColors.addMark(Util::Clamp(s.first, 0.f, 1.f), ImColor(s.second));
+    if (LineColors.getMarks().empty()) LineColors.addMark(0.f, ImColor(IM_COL32_WHITE));
+    LineColors.refreshCache();
+}
+
 void FunscriptHeatmap::Init() noexcept
 {
     if(LineColors.getMarks().empty())
     {
-        // Speed colors 0-2000 (step 50), blended with white for low speeds
-        // speed, name, #hex (og #hex @ alpha)
-        std::array<ImColor, 41> heatColor {
-        //  IM_COL32(0xFF, 0xFF, 0xFF, 0xFF),  // 0    white   #ffffff (og #00eeff @ 0.0)
-        //  IM_COL32(0x80, 0xFF, 0xF9, 0xFF),  // 50   cyan    #80fff9 (og #00fff3 @ 0.5)
-            IM_COL32(0x00, 0xEE, 0xFF, 0xFF),  // 0    cyan    #00eeff
-            IM_COL32(0x00, 0xFF, 0xF3, 0xFF),  // 50   cyan    #00fff3
-            IM_COL32(0x00, 0xFF, 0x8A, 0xFF),  // 100  lime    #00ff8a
-            IM_COL32(0x00, 0xF7, 0x00, 0xFF),  // 150  lime    #00f700
-            IM_COL32(0x78, 0xE0, 0x00, 0xFF),  // 200  lime    #78e000
-            IM_COL32(0xE8, 0xBD, 0x00, 0xFF),  // 250  gold    #e8bd00
-            IM_COL32(0xFF, 0x8C, 0x00, 0xFF),  // 300  orange  #ff8c00
-            IM_COL32(0xFF, 0x40, 0x00, 0xFF),  // 350  orange  #ff4000
-            IM_COL32(0xFF, 0x00, 0x00, 0xFF),  // 400  red     #ff0000
-            IM_COL32(0xFF, 0x00, 0x1E, 0xFF),  // 450  red     #ff001e
-            IM_COL32(0xFF, 0x00, 0xAB, 0xFF),  // 500  magenta #ff00ab
-            IM_COL32(0xFF, 0x00, 0xC4, 0xFF),  // 550  magenta #ff00c4
-            IM_COL32(0x96, 0x00, 0xC5, 0xFF),  // 600  violet  #9600c5
-            IM_COL32(0x77, 0x00, 0xF9, 0xFF),  // 650  purple  #7700f9
-            IM_COL32(0x52, 0x00, 0xFF, 0xFF),  // 700  blue    #5200ff
-            IM_COL32(0x00, 0x00, 0xFF, 0xFF),  // 750  blue    #0000ff
-            IM_COL32(0x00, 0x03, 0xFE, 0xFF),  // 800  blue    #0003fe
-            IM_COL32(0x00, 0x5A, 0x9B, 0xFF),  // 850  blue    #005a9b
-            IM_COL32(0x00, 0x57, 0x58, 0xFF),  // 900  teal    #005758
-            IM_COL32(0x00, 0x58, 0x44, 0xFF),  // 950  teal    #005844
-            IM_COL32(0x04, 0x57, 0x2D, 0xFF),  // 1000 green   #04572d
-            IM_COL32(0x32, 0x52, 0x10, 0xFF),  // 1050 green   #325210
-            IM_COL32(0x4A, 0x4C, 0x00, 0xFF),  // 1100 olive   #4a4c00
-            IM_COL32(0x5C, 0x44, 0x00, 0xFF),  // 1150 olive   #5c4400
-            IM_COL32(0x69, 0x3C, 0x00, 0xFF),  // 1200 brown   #693c00
-            IM_COL32(0x71, 0x34, 0x0A, 0xFF),  // 1250 brown   #71340a
-            IM_COL32(0x74, 0x2E, 0x27, 0xFF),  // 1300 maroon  #742e27
-            IM_COL32(0x73, 0x2D, 0x3E, 0xFF),  // 1350 maroon  #732d3e
-            IM_COL32(0x6D, 0x2E, 0x52, 0xFF),  // 1400 purple  #6d2e52
-            IM_COL32(0x62, 0x32, 0x64, 0xFF),  // 1450 purple  #623264
-            IM_COL32(0x54, 0x37, 0x72, 0xFF),  // 1500 indigo  #543772
-            IM_COL32(0x42, 0x3E, 0x7B, 0xFF),  // 1550 indigo  #423e7b
-            IM_COL32(0x2A, 0x45, 0x7D, 0xFF),  // 1600 navy    #2a457d
-            IM_COL32(0x00, 0x4C, 0x78, 0xFF),  // 1650 navy    #004c78
-            IM_COL32(0x00, 0x52, 0x6E, 0xFF),  // 1700 teal    #00526e
-            IM_COL32(0x00, 0x56, 0x5D, 0xFF),  // 1750 teal    #00565d
-            IM_COL32(0x00, 0x58, 0x4A, 0xFF),  // 1800 green   #00584a
-            IM_COL32(0x00, 0x57, 0x33, 0xFF),  // 1850 green   #005733
-            IM_COL32(0x29, 0x54, 0x19, 0xFF),  // 1900 green   #295419
-            IM_COL32(0x44, 0x4E, 0x00, 0xFF),  // 1950 olive   #444e00
-            IM_COL32(0x57, 0x46, 0x00, 0xFF),  // 2000 olive   #574600
-        };
-        float pos = 0.0f;
-        for (auto& col : heatColor) {
-            LineColors.addMark(pos, col);
-            pos += (1.f / (heatColor.size() - 1));
-        }
-        LineColors.refreshCache();
+        SetLineColors(LinePreset(LineProfile::Fork));
     }
     Shader = std::make_unique<HeatmapShader>();
 }

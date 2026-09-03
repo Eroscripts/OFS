@@ -316,6 +316,11 @@ bool OFS_VideoplayerControls::DrawChapter(ImDrawList* drawList, const ImRect& fr
             EV::Enqueue<ExportClipForChapter>(chapter);
         }
 
+        if(ImGui::MenuItem("Export preview"))
+        {
+            EV::Enqueue<ExportPreviewForChapter>(chapter);
+        }
+
         ImGui::ColorEdit3(TR(COLOR), &chapter.color.Value.x, ImGuiColorEditFlags_NoInputs);
 
         if(ImGui::MenuItem(TR(REMOVE)))

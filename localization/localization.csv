@@ -212,6 +212,16 @@ ACTION_ACTION_70,Action at 70,Action at 70
 ACTION_ACTION_80,Action at 80,Action at 80
 ACTION_ACTION_90,Action at 90,Action at 90
 ACTION_ACTION_100,Action at 100,Action at 100
+ACTION_ACTION_5,Action at 5,Action at 5
+ACTION_ACTION_15,Action at 15,Action at 15
+ACTION_ACTION_25,Action at 25,Action at 25
+ACTION_ACTION_35,Action at 35,Action at 35
+ACTION_ACTION_45,Action at 45,Action at 45
+ACTION_ACTION_55,Action at 55,Action at 55
+ACTION_ACTION_65,Action at 65,Action at 65
+ACTION_ACTION_75,Action at 75,Action at 75
+ACTION_ACTION_85,Action at 85,Action at 85
+ACTION_ACTION_95,Action at 95,Action at 95
 ACTION_SAVE_PROJECT,Save project,Save project
 ACTION_QUICK_EXPORT,Quick export,Quick export
 ACTION_QUICK_EXPORT_2_0,Quick export (2.0),Quick export (2.0)
@@ -472,6 +482,7 @@ SHOW_POSITION,Show position,Show position
 VANILLA_TOOLTIP,The original simulator from day one.,The original simulator from day one.
 RESET_TO_DEFAULTS,Reset to defaults,Reset to defaults
 SIMULATOR,Simulator,Simulator
+SIMULATOR_3D,3D Simulator,3D Simulator
 APPLICATION,Application,Application
 DARK_MODE,Dark mode,Dark mode
 LIGHT_MODE,Light mode,Light mode

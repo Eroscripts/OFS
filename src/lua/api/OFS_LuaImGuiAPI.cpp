@@ -2,6 +2,8 @@
 #include "imgui.h"
 #include "imgui_stdlib.h"
 
+#include <cmath>
+
 OFS_ImGuiAPI::OFS_ImGuiAPI(sol::usertype<class OFS_ExtensionAPI>& ofs) noexcept
 {
     ofs["Text"] = OFS_ImGuiAPI::Text;
@@ -101,10 +103,11 @@ std::tuple<lua_Number, bool> OFS_ImGuiAPI::DragNumber(const char* txt, lua_Numbe
     return std::make_tuple(current, valueChanged);
 }
 
-std::tuple<lua_Integer, bool> OFS_ImGuiAPI::DragInt(const char* txt, lua_Integer current, lua_Integer stepSize) noexcept
+std::tuple<lua_Integer, bool> OFS_ImGuiAPI::DragInt(const char* txt, lua_Number current, lua_Number stepSize) noexcept
 {
-    bool valueChanged = ImGui::DragScalar(txt, ImGuiDataType_S64, &current, stepSize);
-    return std::make_tuple(current, valueChanged);
+    lua_Integer value = (lua_Integer)std::llround(current);
+    bool valueChanged = ImGui::DragScalar(txt, ImGuiDataType_S64, &value, (float)stepSize);
+    return std::make_tuple(value, valueChanged);
 }
 
 std::tuple<std::string, bool> OFS_ImGuiAPI::InputText(const char* txt, std::string current) noexcept
@@ -113,10 +116,12 @@ std::tuple<std::string, bool> OFS_ImGuiAPI::InputText(const char* txt, std::stri
     return std::make_tuple(current, valueChanged);
 }
 
-std::tuple<lua_Integer, bool> OFS_ImGuiAPI::InputInt(const char* txt, lua_Integer current, lua_Integer stepSize) noexcept
+std::tuple<lua_Integer, bool> OFS_ImGuiAPI::InputInt(const char* txt, lua_Number current, lua_Number stepSize) noexcept
 {
-    bool valueChanged = ImGui::InputScalar(txt, ImGuiDataType_S64, &current, &stepSize);
-    return std::make_tuple(current, valueChanged);
+    lua_Integer value = (lua_Integer)std::llround(current);
+    lua_Integer step = (lua_Integer)std::llround(stepSize);
+    bool valueChanged = ImGui::InputScalar(txt, ImGuiDataType_S64, &value, &step);
+    return std::make_tuple(value, valueChanged);
 }
 
 std::tuple<lua_Number, bool> OFS_ImGuiAPI::InputNumber(const char* txt, lua_Number current, lua_Number stepSize) noexcept
@@ -131,16 +136,22 @@ std::tuple<lua_Number, bool> OFS_ImGuiAPI::SliderNumber(const char* txt, lua_Num
     return std::make_tuple(current, valueChanged);
 }
 
-std::tuple<lua_Integer, bool> OFS_ImGuiAPI::SliderInt(const char* txt, lua_Integer current, lua_Integer min, lua_Integer max) noexcept
+std::tuple<lua_Integer, bool> OFS_ImGuiAPI::SliderInt(const char* txt, lua_Number current, lua_Number min, lua_Number max) noexcept
 {
-    bool valueChanged = ImGui::SliderScalar(txt, ImGuiDataType_S64, &current, &min, &max);
-    return std::make_tuple(current, valueChanged);
+    lua_Integer value = (lua_Integer)std::llround(current);
+    lua_Integer mn = (lua_Integer)std::llround(min);
+    lua_Integer mx = (lua_Integer)std::llround(max);
+    bool valueChanged = ImGui::SliderScalar(txt, ImGuiDataType_S64, &value, &mn, &mx);
+    return std::make_tuple(value, valueChanged);
 }
 
-std::tuple<bool, bool> OFS_ImGuiAPI::Checkbox(const char* txt, bool current) noexcept
+std::tuple<bool, bool> OFS_ImGuiAPI::Checkbox(const char* txt, sol::optional<bool> current) noexcept
 {
-    bool valueChanged = ImGui::Checkbox(txt, &current);
-    return std::make_tuple(current, valueChanged);
+    // Tolerate a nil/absent second argument (treat as false) so plugins that
+    // pass an uninitialized state value don't error out.
+    bool value = current.value_or(false);
+    bool valueChanged = ImGui::Checkbox(txt, &value);
+    return std::make_tuple(value, valueChanged);
 }
 
 std::tuple<lua_Integer, bool> OFS_ImGuiAPI::Combo(const char* txt, lua_Integer currentSelection, sol::table items) noexcept

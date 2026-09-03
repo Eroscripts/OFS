@@ -11,6 +11,7 @@
 #include "OFS_GL.h"
 
 #include <sstream>
+#include <cstring>
 
 #include "SDL_timer.h"
 #include "SDL_atomic.h"
@@ -26,6 +27,7 @@ enum MpvPropertyGet : uint64_t {
     MpvFilePath,
     MpvHwDecoder,
     MpvFramesPerSecond,
+    MpvAudioId,
 };
 
 struct MpvDataCache {
@@ -42,6 +44,7 @@ struct MpvDataCache {
     int64_t paused = false;
     int64_t videoWidth = 0;
     int64_t videoHeight = 0;
+    bool hasAudio = false;
 
     float currentVolume = .5f;
 
@@ -245,6 +248,7 @@ bool OFS_Videoplayer::Init(bool hwAccel) noexcept
 	mpv_observe_property(CTX->mpv, MpvFilePath, "path", MPV_FORMAT_STRING);
 	mpv_observe_property(CTX->mpv, MpvHwDecoder, "hwdec-current", MPV_FORMAT_STRING);
 	mpv_observe_property(CTX->mpv, MpvFramesPerSecond, "estimated-vf-fps", MPV_FORMAT_DOUBLE);
+	mpv_observe_property(CTX->mpv, MpvAudioId, "aid", MPV_FORMAT_STRING);
 
     return true;
 }
@@ -309,6 +313,14 @@ inline static void ProcessEvents(MpvPlayerContext* ctx) noexcept
                         ctx->data.fps = *(double*)prop->data;
                         ctx->data.averageFrameTime = (1.0 / ctx->data.fps);
                         break;
+                    case MpvAudioId:
+                    {
+                        // "aid" is always a defined string: a track id when the file has
+                        // audio, or "no" when it doesn't (or "auto" before it resolves).
+                        const char* aid = *(char**)prop->data;
+                        ctx->data.hasAudio = aid && std::strcmp(aid, "no") != 0;
+                        break;
+                    }
                     case MpvDuration:
                         ctx->data.duration = *(double*)prop->data;
                         notifyDuration(ctx);
@@ -585,6 +597,11 @@ float OFS_Videoplayer::Fps() const noexcept
 bool OFS_Videoplayer::VideoLoaded() const noexcept
 {
     return CTX->data.videoLoaded;
+}
+
+bool OFS_Videoplayer::HasAudio() const noexcept
+{
+    return CTX->data.hasAudio;
 }
 
 float OFS_Videoplayer::CurrentPercentPosition() const noexcept

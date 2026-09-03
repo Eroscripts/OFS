@@ -10,12 +10,95 @@
 #include "OFS_Reflection.h"
 #include "OFS_StateHandle.h"
 #include "state/states/BaseOverlayState.h"
+#include "state/LineColorState.h"
+#include "FunscriptHeatmap.h"
+
+#include <algorithm>
 
 OFS_Preferences::OFS_Preferences() noexcept
 {
 	prefStateHandle = OFS_AppState<PreferenceState>::Register(PreferenceState::StateName);
+	lineColorStateHandle = OFS_AppState<LineColorState>::Register(LineColorState::StateName);
 	auto& state = PreferenceState::State(prefStateHandle);
     OFS_DynFontAtlas::FontOverride = state.fontOverride;
+    ApplyLineColors(); // honor the persisted line-color profile from startup
+}
+
+void OFS_Preferences::ApplyLineColors() noexcept
+{
+	auto& lc = LineColorState::State(lineColorStateHandle);
+	if (lc.profile == FunscriptHeatmap::Custom) {
+		std::vector<std::pair<float, ImU32>> stops;
+		stops.reserve(lc.customStops.size());
+		for (auto& s : lc.customStops) stops.emplace_back(s.pos, s.color);
+		std::sort(stops.begin(), stops.end(), [](auto& a, auto& b) { return a.first < b.first; });
+		if (stops.empty()) stops = FunscriptHeatmap::LinePreset(FunscriptHeatmap::Fork);
+		FunscriptHeatmap::SetLineColors(stops);
+	} else {
+		FunscriptHeatmap::SetLineColors(FunscriptHeatmap::LinePreset(lc.profile));
+	}
+}
+
+// Profile picker + (for Custom) a stop editor. Returns true when the palette changes.
+bool OFS_Preferences::drawLineColorEditor() noexcept
+{
+	auto& lc = LineColorState::State(lineColorStateHandle);
+	bool changed = false;
+
+	if (ImGui::Combo("Profile##LineColorProfile", &lc.profile, "Fork\0Classic (OFS)\0Custom\0\0")) {
+		if (lc.profile == FunscriptHeatmap::Custom && lc.customStops.empty()) {
+			// Seed the custom palette from the fork preset on first use.
+			for (auto& s : FunscriptHeatmap::LinePreset(FunscriptHeatmap::Fork))
+				lc.customStops.push_back({ s.first, s.second });
+		}
+		changed = true;
+	}
+
+	// Live gradient preview.
+	ImGradient::DrawGradientBar(&FunscriptHeatmap::LineColors,
+		ImGui::GetCursorScreenPos(), ImGui::GetContentRegionAvail().x, 20.f);
+	ImGui::Dummy(ImVec2(ImGui::GetContentRegionAvail().x, 24.f));
+
+	if (lc.profile == FunscriptHeatmap::Custom) {
+		int removeAt = -1;
+		for (int i = 0; i < (int)lc.customStops.size(); ++i) {
+			ImGui::PushID(i);
+			auto& stop = lc.customStops[i];
+			ImGui::SetNextItemWidth(120.f);
+			if (ImGui::DragFloat("##pos", &stop.pos, 0.005f, 0.f, 1.f, "%.3f")) {
+				stop.pos = Util::Clamp(stop.pos, 0.f, 1.f); changed = true;
+			}
+			ImGui::SameLine();
+			ImVec4 col = ImGui::ColorConvertU32ToFloat4(stop.color);
+			if (ImGui::ColorEdit4("##col", &col.x, ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_AlphaPreview)) {
+				stop.color = ImGui::ColorConvertFloat4ToU32(col); changed = true;
+			}
+			ImGui::SameLine();
+			if (ImGui::SmallButton("X")) removeAt = i;
+			ImGui::PopID();
+		}
+		if (removeAt >= 0 && lc.customStops.size() > 1) { lc.customStops.erase(lc.customStops.begin() + removeAt); changed = true; }
+
+		if (ImGui::Button("Add stop")) {
+			lc.customStops.push_back({ 1.f, IM_COL32_WHITE });
+			changed = true;
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Reset to Fork")) {
+			lc.customStops.clear();
+			for (auto& s : FunscriptHeatmap::LinePreset(FunscriptHeatmap::Fork)) lc.customStops.push_back({ s.first, s.second });
+			changed = true;
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Reset to Classic")) {
+			lc.customStops.clear();
+			for (auto& s : FunscriptHeatmap::LinePreset(FunscriptHeatmap::Classic)) lc.customStops.push_back({ s.first, s.second });
+			changed = true;
+		}
+	}
+
+	if (changed) ApplyLineColors();
+	return changed;
 }
 
 static void copyTranslationHelper() noexcept
@@ -192,6 +275,11 @@ bool OFS_Preferences::ShowPreferenceWindow() noexcept
 					OFS::Tooltip(TR(FAST_FRAME_STEP_TOOLTIP));
 					ImGui::Separator();
 					if (ImGui::Checkbox(TR(SHOW_METADATA_DIALOG_ON_NEW_PROJECT), &state.showMetaOnNew)) {
+						save = true;
+					}
+					ImGui::Separator();
+					ImGui::TextDisabled("Action line colors (by speed)");
+					if (drawLineColorEditor()) {
 						save = true;
 					}
 					ImGui::EndTabItem();

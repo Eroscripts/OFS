@@ -15,6 +15,7 @@ OFS_DynFontAtlas* OFS_DynFontAtlas::ptr = nullptr;
 
 ImFont* OFS_DynFontAtlas::DefaultFont = nullptr;
 ImFont* OFS_DynFontAtlas::DefaultFont2 = nullptr;
+ImFont* OFS_DynFontAtlas::NumberFont = nullptr;
 
 std::string OFS_DynFontAtlas::FontOverride;
 
@@ -95,6 +96,9 @@ void OFS_DynFontAtlas::RebuildFont(float fontSize) noexcept
         auto& io = ImGui::GetIO();
         GLuint fontTexture = (GLuint)(intptr_t)io.Fonts->TexID;
         io.Fonts->Clear();
+        // Clear() frees the old ImFonts; null this now so the fallback path below
+        // can't leave a dangling pointer behind.
+        ptr->NumberFont = nullptr;
 
         auto roboto = Util::Resource("fonts/RobotoMono-Regular.ttf");
         auto mainFont = FontOverride.empty() ? roboto : FontOverride;
@@ -137,6 +141,19 @@ void OFS_DynFontAtlas::RebuildFont(float fontSize) noexcept
             OFS_PROFILE("Load main font (2x)");
             font = AddFontFromFile(ptr, mainFont.c_str(), fontSize * 2.f, false);
             ptr->DefaultFont2 = font;
+        }
+        {
+            // Large digits-only face for numeric readouts. Always RobotoMono (not the
+            // user's font override) so it stays monospace: the readout keeps a stable
+            // width as the number changes. Only 0-9, so the atlas cost stays small.
+            OFS_PROFILE("Load large number font");
+            static const ImWchar digitRange[] = { '0', '9', 0 };
+            ptr->config.MergeMode = false;
+            font = io.Fonts->AddFontFromFileTTF(roboto.c_str(), NumberFontSize, &ptr->config, digitRange);
+            if (!font) {
+                LOGF_ERROR("Failed to load number font \"%s\"", roboto.c_str());
+            }
+            ptr->NumberFont = font;
         }
 
 default_font_end:

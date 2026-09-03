@@ -6,6 +6,8 @@
 #include "OFS_UndoSystem.h"
 #include "OFS_EventSystem.h"
 #include "OFS_ScriptSimulator.h"
+#include "OFS_Simulator3D.h"
+#include "OFS_PreviewExporter.h"
 #include "OFS_ControllerInput.h"
 #include "GradientBar.h"
 #include "OFS_SpecialFunctions.h"
@@ -42,6 +44,7 @@ private:
 
     uint32_t stateHandle = 0xFFFF'FFFF;
     bool ShowMetadataEditor = false;
+    bool ShowPreviewExporter = false;
     bool ShowProjectEditor = false;
 #ifndef NDEBUG
     bool DebugDemo = false;
@@ -70,6 +73,7 @@ private:
     void processEvents() noexcept;
 
     void ExportClip(const class ExportClipForChapter* ev) noexcept;
+    void ExportPreview(const class ExportPreviewForChapter* ev) noexcept;
 
     void FunscriptChanged(const FunscriptActionsChangedEvent* ev) noexcept;
     void DragNDrop(const OFS_SDL_Event* ev) noexcept;
@@ -140,6 +144,7 @@ public:
     ScriptTimeline scriptTimeline;
     OFS_VideoplayerControls playerControls;
     ScriptSimulator simulator;
+    Simulator3D simulator3D;
     OFS_BlockingTask blockingTask;
 
     std::unique_ptr<OFS_Videoplayer> player;
@@ -154,6 +159,7 @@ public:
     std::unique_ptr<OFS_FunscriptMetadataEditor> metadataEditor;
     std::unique_ptr<OFS_WebsocketApi> webApi;
     std::unique_ptr<OFS_ChapterManager> chapterMgr;
+    std::unique_ptr<OFS_PreviewExporter> previewExporter;
 
     std::unique_ptr<OFS_Project> LoadedProject;
 
@@ -171,6 +177,8 @@ public:
     {
         return LoadedProject->ActiveScript();
     }
+
+    inline Simulator3D& GetSimulator3D() noexcept { return simulator3D; }
 
     void UpdateNewActiveScript(uint32_t activeIndex) noexcept;
 
